@@ -710,7 +710,7 @@ class Controller:
         client.api.start(container_id)
 
     def run_test(self):
-        deploy_tests.start()
+        deploy_tests.menu()
 
     @staticmethod
     def stop_waf():

@@ -2,7 +2,14 @@
   {
     "scenario_title": "FedAvg_Fully_nodes5_MNIST_No Attack",
     "scenario_description": "",
-    "simulation": true,
+    "deployment": "docker",
+    "report_status_data_queue": "0",
+    "gpu_id": "0",
+    "attack_params": {
+      "poisoned_percent": "0",
+      "poisoned_ratio": "0"
+    },
+    "random_topology_probability": 0,
     "federation": "DFL",
     "topology": "Custom",
     "nodes": {
@@ -607,7 +614,14 @@
   {
     "scenario_title": "FedAvg_Fully_nodes5_MNIST_GLLNeuronInversionAttack",
     "scenario_description": "",
-    "simulation": true,
+    "deployment": "docker",
+    "report_status_data_queue": "0",
+    "gpu_id": "0",
+    "attack_params": {
+      "poisoned_percent": "0",
+      "poisoned_ratio": "0"
+    },
+    "random_topology_probability": 0,
     "federation": "DFL",
     "topology": "Custom",
     "nodes": {
@@ -1212,7 +1226,14 @@
   {
     "scenario_title": "FedAvg_Fully_nodes5_MNIST_NoiseInjectionAttack",
     "scenario_description": "",
-    "simulation": true,
+    "deployment": "docker",
+    "report_status_data_queue": "0",
+    "gpu_id": "0",
+    "attack_params": {
+      "poisoned_percent": "0",
+      "poisoned_ratio": "0"
+    },
+    "random_topology_probability": 0,
     "federation": "DFL",
     "topology": "Custom",
     "nodes": {
@@ -1817,7 +1838,14 @@
   {
     "scenario_title": "FedAvg_Fully_nodes5_MNIST_SwappingWeightsAttack",
     "scenario_description": "",
-    "simulation": true,
+    "deployment": "docker",
+    "report_status_data_queue": "0",
+    "gpu_id": "0",
+    "attack_params": {
+      "poisoned_percent": "0",
+      "poisoned_ratio": "0"
+    },
+    "random_topology_probability": 0,
     "federation": "DFL",
     "topology": "Custom",
     "nodes": {
@@ -2422,7 +2450,14 @@
   {
     "scenario_title": "FedAvg_Fully_nodes5_MNIST_DelayerAttack",
     "scenario_description": "",
-    "simulation": true,
+    "deployment": "docker",
+    "report_status_data_queue": "0",
+    "gpu_id": "0",
+    "attack_params": {
+      "poisoned_percent": "0",
+      "poisoned_ratio": "0"
+    },
+    "random_topology_probability": 0,
     "federation": "DFL",
     "topology": "Custom",
     "nodes": {

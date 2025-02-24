@@ -1,0 +1,385 @@
+{
+  "scenario_title": "empty",
+  "scenario_description": "test",
+  "deployment": "docker",
+  "federation": "DFL",
+  "topology": "Fully",
+  "nodes": {
+    "0": {
+      "id": 0,
+      "ip": "192.168.50.2",
+      "port": "45001",
+      "role": "aggregator",
+      "malicious": false,
+      "proxy": false,
+      "start": true
+    },
+    "1": {
+      "id": 1,
+      "ip": "192.168.50.3",
+      "port": "45002",
+      "role": "aggregator",
+      "malicious": false,
+      "proxy": false,
+      "start": false
+    },
+    "2": {
+      "id": 2,
+      "ip": "192.168.50.4",
+      "port": "45003",
+      "role": "aggregator",
+      "malicious": false,
+      "proxy": false,
+      "start": false
+    }
+  },
+  "nodes_graph": [
+    {
+      "id": 0,
+      "ip": "192.168.50.2",
+      "port": "45001",
+      "role": "aggregator",
+      "malicious": false,
+      "proxy": false,
+      "start": true,
+      "neighbors": [
+        1,
+        2
+      ],
+      "links": [],
+      "__threeObj": {
+        "metadata": {
+          "version": 4.6,
+          "type": "Object",
+          "generator": "Object3D.toJSON"
+        },
+        "geometries": [
+          {
+            "uuid": "1a55f2b9-811f-4ae5-8aec-50799e67c153",
+            "type": "SphereGeometry",
+            "radius": 5,
+            "widthSegments": 32,
+            "heightSegments": 16,
+            "phiStart": 0,
+            "phiLength": 6.283185307179586,
+            "thetaStart": 0,
+            "thetaLength": 3.141592653589793
+          }
+        ],
+        "materials": [
+          {
+            "uuid": "9e421c65-aaed-4fe3-9ed1-7a090ad07cef",
+            "type": "MeshLambertMaterial",
+            "color": 14245634,
+            "emissive": 0,
+            "reflectivity": 1,
+            "refractionRatio": 0.98,
+            "opacity": 0.75,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "colorWrite": true,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilFunc": 519,
+            "stencilRef": 0,
+            "stencilFuncMask": 255,
+            "stencilFail": 7680,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680
+          }
+        ],
+        "object": {
+          "uuid": "b8074a3a-1118-45dc-8c3f-1620b1416d25",
+          "type": "Mesh",
+          "layers": 1,
+          "matrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            4.4575704281122865,
+            23.671697188809866,
+            -20.173641755212305,
+            1
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "geometry": "1a55f2b9-811f-4ae5-8aec-50799e67c153",
+          "material": "9e421c65-aaed-4fe3-9ed1-7a090ad07cef"
+        }
+      },
+      "index": 0,
+      "x": 4.4575704281122865,
+      "y": 23.671697188809866,
+      "z": -20.173641755212305,
+      "vx": -1.7503556323225064e-12,
+      "vy": -3.006800388354821e-13,
+      "vz": 2.348938429280239e-12
+    },
+    {
+      "id": 1,
+      "ip": "192.168.50.3",
+      "port": "45002",
+      "role": "aggregator",
+      "malicious": false,
+      "proxy": false,
+      "start": false,
+      "neighbors": [
+        0,
+        2
+      ],
+      "links": [],
+      "__threeObj": {
+        "metadata": {
+          "version": 4.6,
+          "type": "Object",
+          "generator": "Object3D.toJSON"
+        },
+        "geometries": [
+          {
+            "uuid": "0d7dbc83-14fb-45f0-ae45-05e34340f632",
+            "type": "SphereGeometry",
+            "radius": 5,
+            "widthSegments": 32,
+            "heightSegments": 16,
+            "phiStart": 0,
+            "phiLength": 6.283185307179586,
+            "thetaStart": 0,
+            "thetaLength": 3.141592653589793
+          }
+        ],
+        "materials": [
+          {
+            "uuid": "e98f3e25-dc51-43f9-a028-47ccd610205e",
+            "type": "MeshLambertMaterial",
+            "color": 14245634,
+            "emissive": 0,
+            "reflectivity": 1,
+            "refractionRatio": 0.98,
+            "opacity": 0.75,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "colorWrite": true,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilFunc": 519,
+            "stencilRef": 0,
+            "stencilFuncMask": 255,
+            "stencilFail": 7680,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680
+          }
+        ],
+        "object": {
+          "uuid": "c4ecdff0-73ec-4f97-920a-566e3290cfe0",
+          "type": "Mesh",
+          "layers": 1,
+          "matrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            16.135501576061152,
+            -26.735937286023628,
+            -3.3715972685301328,
+            1
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "geometry": "0d7dbc83-14fb-45f0-ae45-05e34340f632",
+          "material": "e98f3e25-dc51-43f9-a028-47ccd610205e"
+        }
+      },
+      "index": 1,
+      "x": 16.135501576061152,
+      "y": -26.735937286023628,
+      "z": -3.3715972685301328,
+      "vx": -5.341863545258125e-13,
+      "vy": -3.4358269816986207e-13,
+      "vz": 8.728838640662648e-13
+    },
+    {
+      "id": 2,
+      "ip": "192.168.50.4",
+      "port": "45003",
+      "role": "aggregator",
+      "malicious": false,
+      "proxy": false,
+      "start": false,
+      "neighbors": [
+        1,
+        0
+      ],
+      "links": [],
+      "__threeObj": {
+        "metadata": {
+          "version": 4.6,
+          "type": "Object",
+          "generator": "Object3D.toJSON"
+        },
+        "geometries": [
+          {
+            "uuid": "e0491f7e-b308-45c7-828b-4a58bd638641",
+            "type": "SphereGeometry",
+            "radius": 5,
+            "widthSegments": 32,
+            "heightSegments": 16,
+            "phiStart": 0,
+            "phiLength": 6.283185307179586,
+            "thetaStart": 0,
+            "thetaLength": 3.141592653589793
+          }
+        ],
+        "materials": [
+          {
+            "uuid": "e67352ea-6311-461a-87b3-be73b7160132",
+            "type": "MeshLambertMaterial",
+            "color": 14245634,
+            "emissive": 0,
+            "reflectivity": 1,
+            "refractionRatio": 0.98,
+            "opacity": 0.75,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "colorWrite": true,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilFunc": 519,
+            "stencilRef": 0,
+            "stencilFuncMask": 255,
+            "stencilFail": 7680,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680
+          }
+        ],
+        "object": {
+          "uuid": "f0168d39-0cd7-468d-98bc-8cf8f932d209",
+          "type": "Mesh",
+          "layers": 1,
+          "matrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            -20.59307200417344,
+            3.064240097213758,
+            23.545239023742436,
+            1
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "geometry": "e0491f7e-b308-45c7-828b-4a58bd638641",
+          "material": "e67352ea-6311-461a-87b3-be73b7160132"
+        }
+      },
+      "index": 2,
+      "x": -20.59307200417344,
+      "y": 3.064240097213758,
+      "z": 23.545239023742436,
+      "vx": 2.284541986848319e-12,
+      "vy": 6.442627370052822e-13,
+      "vz": -3.221822293346488e-12
+    }
+  ],
+  "n_nodes": 3,
+  "matrix": [
+    [
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      0
+    ]
+  ],
+  "random_topology_probability": 0.5,
+  "dataset": "MNIST",
+  "iid": false,
+  "partition_selection": "dirichlet",
+  "partition_parameter": "0.5",
+  "model": "MLP",
+  "agg_algorithm": "FedAvg",
+  "rounds": "5",
+  "logginglevel": true,
+  "report_status_data_queue": true,
+  "accelerator": "cpu",
+  "network_subnet": "192.168.50.0/24",
+  "network_gateway": "192.168.50.1",
+  "epochs": "1",
+  "attacks": "No Attack",
+  "poisoned_node_percent": "0",
+  "poisoned_sample_percent": "0",
+  "poisoned_noise_percent": "0",
+  "attack_params": {
+    "poisoned_percent": "0",
+    "poisoned_ratio": "0",
+    "noise_type": "Salt",
+    "targeted": true,
+    "target_label": "4",
+    "target_changed_label": "7",
+    "strength": "10000",
+    "layer_idx": "0",
+    "delay": "10",
+    "round_start_attack": "1",
+    "round_stop_attack": "10"
+  },
+  "with_reputation": false,
+  "is_dynamic_topology": false,
+  "is_dynamic_aggregation": false,
+  "target_aggregation": false,
+  "random_geo": true,
+  "latitude": 38.023522,
+  "longitude": -1.174389,
+  "mobility": true,
+  "mobility_type": "both",
+  "radius_federation": "1000",
+  "scheme_mobility": "random",
+  "round_frequency": "1",
+  "mobile_participants_percent": "100",
+  "additional_participants": [],
+  "schema_additional_participants": "random",
+  "gpu_id": []
+}

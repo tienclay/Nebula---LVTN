@@ -174,7 +174,12 @@ def run_test(test_path):
 # Run a single scenario
 def run_scenario(scenario):
     import subprocess
+    import sys
+    from pathlib import Path
 
+    # Add project root to Python path
+    project_root = Path(__file__).parent.parent.parent
+    sys.path.append(str(project_root))
     from nebula.scenarios import ScenarioManagement
 
     # Manager for the actual scenario
