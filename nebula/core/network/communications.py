@@ -29,6 +29,8 @@ from nebula.core.utils.locker import Locker
 if TYPE_CHECKING:
     from nebula.core.engine import Engine
 
+import ssl  # TLS 1.3 support
+
 
 class CommunicationsManager:
     def __init__(self, engine: "Engine"):
@@ -646,9 +648,25 @@ class CommunicationsManager:
                     self.pending_connections.add(addr)
                     logging.info(f"🔗  [outgoing] Including {addr} in pending connections: {self.pending_connections}")
 
-                logging.info(f"🔗  [outgoing] Openning connection with {host}:{port}")
-                reader, writer = await asyncio.open_connection(host, port)
-                logging.info(f"🔗  [outgoing] Connection opened with {writer.get_extra_info('peername')}")
+                if self.engine.security:
+                    logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}")
+                    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                    context.minimum_version = ssl.TLSVersion.TLSv1_3
+                    # context.load_cert_chain(certfile="nodeB-cert.pem", keyfile="nodeB-key.pem")  # Client's certificate & key
+                    # context.load_verify_locations("ca-cert.pem")  # CA certificate to verify peers
+                    context.verify_mode = ssl.CERT_REQUIRED  # Require server authentication
+
+                    reader, writer = await asyncio.open_connection(host, port)
+                    logging.info(
+                        f"🔗  [outgoing] Secure connection established with {writer.get_extra_info('peername')}"
+                    )
+                    logging.info(
+                        f"🔗  [outgoing] TLS Version: {writer.get_extra_info('ssl_object').version()}, Cipher: {writer.get_extra_info('cipher')}"
+                    )
+                else:
+                    logging.info(f"🔗  [outgoing] Openning connection with {host}:{port}")
+                    reader, writer = await asyncio.open_connection(host, port)
+                    logging.info(f"🔗  [outgoing] Connection opened with {writer.get_extra_info('peername')}")
 
                 async with self.connections_manager_lock:
                     self.outgoing_connections[addr] = (reader, writer)
