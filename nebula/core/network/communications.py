@@ -648,12 +648,16 @@ class CommunicationsManager:
                     self.pending_connections.add(addr)
                     logging.info(f"🔗  [outgoing] Including {addr} in pending connections: {self.pending_connections}")
 
+                # To test when security is on/off - use TLS 1.3 for secure connections
                 if self.engine.security:
                     logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}")
                     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
                     context.minimum_version = ssl.TLSVersion.TLSv1_3
-                    # context.load_cert_chain(certfile="nodeB-cert.pem", keyfile="nodeB-key.pem")  # Client's certificate & key
-                    # context.load_verify_locations("ca-cert.pem")  # CA certificate to verify peers
+                    context.load_cert_chain(
+                        certfile=self.config.participant["security_args"]["certfile"],
+                        keyfile=self.config.participant["security_args"]["keyfile"],
+                    )
+                    context.load_verify_locations(self.config.participant["security_args"]["cafile"])
                     context.verify_mode = ssl.CERT_REQUIRED  # Require server authentication
 
                     reader, writer = await asyncio.open_connection(host, port)
