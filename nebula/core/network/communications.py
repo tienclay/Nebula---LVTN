@@ -291,8 +291,11 @@ class CommunicationsManager:
             if self.engine.security:
                 context = self.create_ssl_context()
                 self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port, ssl=context)
+                logging.info(f"🌐  Network engine deployed with TLS 1.3 secure connection")
             else:
-                self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port)    
+                self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port)
+                logging.info(f"🌐  Network engine deployed without secure connection")
+                 
             self.network_task = asyncio.create_task(self.network_engine.serve_forever(), name="Network Engine")
             logging.info(f"🌐  Network engine deployed at host {self.host} and port {self.port}")
             
