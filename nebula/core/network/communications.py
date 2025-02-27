@@ -284,18 +284,44 @@ class CommunicationsManager:
         logging.info("🌐  Starting Communications Manager...")
         await self.deploy_network_engine()
 
+    # Network engine - wait for incoming connections
     async def deploy_network_engine(self):
         logging.info("🌐  Deploying Network engine...")
-        self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port)
-        self.network_task = asyncio.create_task(self.network_engine.serve_forever(), name="Network Engine")
-        logging.info(f"🌐  Network engine deployed at host {self.host} and port {self.port}")
-
+        try:
+            if self.engine.security:
+                context = self.create_ssl_context()
+                self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port, ssl=context)
+            else:
+                self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port)    
+            self.network_task = asyncio.create_task(self.network_engine.serve_forever(), name="Network Engine")
+            logging.info(f"🌐  Network engine deployed at host {self.host} and port {self.port}")
+            
+        except Exception as e:
+            logging.error(f"❌ Failed to deploy network engine: {e}")
+            
+    def create_ssl_context(self, role: str = "server"):
+        context = None
+        if role == "server":
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH) # verify incoming connections
+        else:
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH) # verify outgoing connections
+        context.minimum_version = ssl.TLSVersion.TLSv1_3
+        context.load_cert_chain(
+            certfile = self.config.participant["security_args"]["certfile"],
+            keyfile = self.config.participant["security_args"]["keyfile"],
+        )
+        context.load_verify_locations(self.config.participant["security_args"]["cafile"])
+        context.verify_mode = ssl.CERT_REQUIRED
+        return context
+        
+        
     async def handle_connection_wrapper(self, reader, writer):
         asyncio.create_task(self.handle_connection(reader, writer))
 
     def create_message(self, message_type: str, action: str = "", *args, **kwargs):
         return self.mm.create_message(message_type, action, *args, **kwargs)
 
+    # Incoming handle
     async def handle_connection(self, reader, writer):
         async def process_connection(reader, writer):
             try:
@@ -612,6 +638,7 @@ class CommunicationsManager:
                 logging.exception(f"❗️  Cannot send model to {dest_addr}: {e!s}")
                 await self.disconnect(dest_addr, mutual_disconnection=False)
 
+    # Outgoing handle
     async def establish_connection(self, addr, direct=True, reconnect=False):
         logging.info(f"🔗  [outgoing] Establishing connection with {addr} (direct: {direct})")
 
@@ -651,16 +678,8 @@ class CommunicationsManager:
                 # To test when security is on/off - use TLS 1.3 for secure connections
                 if self.engine.security:
                     logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}")
-                    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-                    context.minimum_version = ssl.TLSVersion.TLSv1_3
-                    context.load_cert_chain(
-                        certfile=self.config.participant["security_args"]["certfile"],
-                        keyfile=self.config.participant["security_args"]["keyfile"],
-                    )
-                    context.load_verify_locations(self.config.participant["security_args"]["cafile"])
-                    context.verify_mode = ssl.CERT_REQUIRED  # Require server authentication
-
-                    reader, writer = await asyncio.open_connection(host, port)
+                    context = self.create_ssl_context(role="client")
+                    reader, writer = await asyncio.open_connection(host, port, ssl=context)
                     logging.info(
                         f"🔗  [outgoing] Secure connection established with {writer.get_extra_info('peername')}"
                     )
