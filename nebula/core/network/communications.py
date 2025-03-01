@@ -649,6 +649,9 @@ class CommunicationsManager:
             try:
                 host = str(addr.split(":")[0])
                 port = str(addr.split(":")[1])
+                # dns = str(addr.split(":")[2])
+                # log host,port and dns
+                # logging.info(f"🔗  [outgoing] Host: {host} | Port: {port} | DNS: {dns}")
                 if host == self.host and port == self.port:
                     logging.info("🔗  [outgoing] Connection with yourself is not allowed")
                     return False
@@ -680,7 +683,10 @@ class CommunicationsManager:
 
                 # To test when security is on/off - use TLS 1.3 for secure connections
                 if self.engine.security:
-                    logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}")
+                    # logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}:{dns}")
+                    # context = self.create_ssl_context(role="client")
+                    # reader, writer = await asyncio.open_connection(host, port, ssl=context, server_hostname=dns)
+                     logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}")
                     context = self.create_ssl_context(role="client")
                     reader, writer = await asyncio.open_connection(host, port, ssl=context)
                     logging.info(
