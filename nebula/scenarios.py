@@ -496,6 +496,7 @@ class ScenarioManagement:
                 dir_path=self.cert_dir,
                 node_id=f"participant_{i}",
                 ip=participant_config["network_args"]["ip"],
+                idx=participant_config["device_args"]["idx"],
             )
 
             participant_config["security_args"]["certfile"] = certificate_path
