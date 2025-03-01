@@ -5,23 +5,32 @@ import os
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
+# from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, load_pem_private_key
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
 
 
 def generate_ca_certificate(dir_path):
     keyfile_path = os.path.join(dir_path, "ca_key.pem")
     certfile_path = os.path.join(dir_path, "ca_cert.pem")
 
-    if os.path.exists(keyfile_path) and os.path.exists(certfile_path):
-        print("CA Certificate and key already exist")
-        return keyfile_path, certfile_path
+    # if os.path.exists(keyfile_path) and os.path.exists(certfile_path):
+    #     print("CA Certificate and key already exist")
+    #     return keyfile_path, certfile_path
+    
+    # BMTD: Remove existing files
+    if os.path.exists(keyfile_path):
+        os.remove(keyfile_path)
+    if os.path.exists(certfile_path):
+        os.remove(certfile_path)
 
     # Generate certfile and keyfile for the CA (pem format)
-    ca_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
+    # ca_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
+    # NOTE: change to ECC key
+    ca_private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
 
-    ca_issuer = x509.Name([
+    ca_subject = ca_issuer = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, "ES"),
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Spain"),
         x509.NameAttribute(NameOID.LOCALITY_NAME, "Murcia"),
@@ -34,7 +43,7 @@ def generate_ca_certificate(dir_path):
 
     cert = (
         x509.CertificateBuilder()
-        .subject_name(ca_issuer)
+        .subject_name(ca_subject)
         .issuer_name(ca_issuer)
         .public_key(ca_private_key.public_key())
         .serial_number(x509.random_serial_number())
@@ -59,14 +68,20 @@ def generate_ca_certificate(dir_path):
     return keyfile_path, certfile_path
 
 
-def generate_certificate(dir_path, node_id, ip):
+def generate_certificate(dir_path, node_id, ip, idx):
     keyfile_path = os.path.join(dir_path, f"{node_id}_key.pem")
     certfile_path = os.path.join(dir_path, f"{node_id}_cert.pem")
-    ip_obj = ipaddress.ip_address(ip)
+    # ip_obj = ipaddress.ip_address(ip) # NOTE: dynamic IP -> no IP in certificate
 
-    if os.path.exists(keyfile_path) and os.path.exists(certfile_path):
-        print("Certificate and key already exist")
-        return keyfile_path, certfile_path
+    # if os.path.exists(keyfile_path) and os.path.exists(certfile_path):
+    #     print("Certificate and key already exist")
+    #     return keyfile_path, certfile_path
+    
+    # BMTD: Remove existing files
+    if os.path.exists(keyfile_path):
+        os.remove(keyfile_path)
+    if os.path.exists(certfile_path):
+        os.remove(certfile_path)
 
     with open(os.path.join(dir_path, "ca_key.pem"), "rb") as f:
         ca_private_key = load_pem_private_key(f.read(), password=None)
@@ -75,7 +90,9 @@ def generate_certificate(dir_path, node_id, ip):
         ca_cert = x509.load_pem_x509_certificate(f.read())
 
     # Generate certfile and keyfile for the participant to use in the federation (pem format)
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
+    # private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
+    # NOTE: change to ECC key
+    private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
 
     subject = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
@@ -97,7 +114,32 @@ def generate_certificate(dir_path, node_id, ip):
         .not_valid_before(valid_from)
         .not_valid_after(valid_to)
         .add_extension(
-            x509.SubjectAlternativeName([x509.DNSName("localhost"), x509.IPAddress(ip_obj)]),
+            x509.SubjectAlternativeName([x509.DNSName(f"participant-{idx}.nebula")]),
+            critical=False,
+        ) 
+        .add_extension(
+            x509.BasicConstraints(ca=False, path_length=None),
+            critical=True,  # Critical to enforce the constraint
+        )
+        .add_extension(
+            x509.KeyUsage(
+                digital_signature=True,
+                key_encipherment=True,
+                key_cert_sign=False,
+                crl_sign=False,
+                content_commitment=False,
+                data_encipherment=False,
+                key_agreement=False,
+                encipher_only=False,
+                decipher_only=False,
+            ),
+            critical=True,
+        )
+        .add_extension(
+            x509.ExtendedKeyUsage([
+                ExtendedKeyUsageOID.SERVER_AUTH,
+                ExtendedKeyUsageOID.CLIENT_AUTH,
+            ]),
             critical=False,
         )
         .sign(ca_private_key, hashes.SHA256(), default_backend())
