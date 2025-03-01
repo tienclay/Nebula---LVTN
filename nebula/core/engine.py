@@ -322,7 +322,9 @@ class Engine:
         await self.cm.start()
         initial_neighbors = self.config.participant["network_args"]["neighbors"].split()
         for i in initial_neighbors:
-            addr = f"{i.split(':')[0]}:{i.split(':')[1]}"
+            # addr = f"{i.split(':')[0]}:{i.split(':')[1]}"
+            # BMTD: add DNS support
+            addr = f"{i.split(':')[0]}:{i.split(':')[1]:{i.split(':')[2]}}"
             await self.cm.connect(addr, direct=True)
             await asyncio.sleep(1)
         while not self.cm.verify_connections(initial_neighbors):
