@@ -305,7 +305,7 @@ class CommunicationsManager:
     def create_ssl_context(self, role: str = "server"):
         context = None
         if role == "server":
-            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH) # verify incoming connections
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER) # verify incoming connections
         else:
             context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH) # verify outgoing connections
         context.minimum_version = ssl.TLSVersion.TLSv1_3

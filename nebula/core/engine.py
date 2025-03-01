@@ -320,11 +320,14 @@ class Engine:
         )
         await asyncio.sleep(self.config.participant["misc_args"]["grace_time_connection"])
         await self.cm.start()
+        logging.info(self.config.participant["network_args"]["neighbors"])
         initial_neighbors = self.config.participant["network_args"]["neighbors"].split()
+        logging.info(f"Initial neighbors: {initial_neighbors}")
         for i in initial_neighbors:
             # addr = f"{i.split(':')[0]}:{i.split(':')[1]}"
             # BMTD: add DNS support
-            addr = f"{i.split(':')[0]}:{i.split(':')[1]:{i.split(':')[2]}}"
+            addr = f"{i.split(':')[0]}:{i.split(':')[1]}:{i.split(':')[2]}"
+            logging.info(f"Connecting to {addr}")
             await self.cm.connect(addr, direct=True)
             await asyncio.sleep(1)
         while not self.cm.verify_connections(initial_neighbors):
