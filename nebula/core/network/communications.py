@@ -326,6 +326,8 @@ class CommunicationsManager:
 
     # Incoming handle
     async def handle_connection(self, reader, writer):
+        # BMTD fix connection from this, it not contain dns, the connections have difference format when the node is incoming
+        # this only handle host and port not dns, so the code not work lol
         async def process_connection(reader, writer):
             try:
                 addr = writer.get_extra_info("peername")
@@ -334,7 +336,11 @@ class CommunicationsManager:
                 connected_node_port = addr[1]
                 if ":" in connected_node_id:
                     connected_node_id, connected_node_port = connected_node_id.split(":")
-                connection_addr = f"{addr[0]}:{connected_node_port}"
+                    
+                # BMTD: this code only for get DNS, in real life we implement different way to get DNS
+                connected_node_dns = f"participant-{int(connected_node_port) - 45001}.nebula"
+                                    
+                connection_addr = f"{addr[0]}:{connected_node_port}:{connected_node_dns}"
                 direct = await reader.readline()
                 direct = direct.decode("utf-8").strip()
                 direct = True if direct == "True" else False
@@ -652,6 +658,7 @@ class CommunicationsManager:
                 # BMTD: log host,port and dns
                 dns = str(addr.split(":")[2])
                 logging.info(f"🔗  [outgoing] Going to: Host: {host} | Port: {port} | DNS: {dns}")
+                
                 if host == self.host and port == self.port:
                     logging.info("🔗  [outgoing] Connection with yourself is not allowed")
                     return False
@@ -686,9 +693,6 @@ class CommunicationsManager:
                     logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}:{dns}")
                     context = self.create_ssl_context(role="client")
                     reader, writer = await asyncio.open_connection(host, port, ssl=context, server_hostname=dns)
-                    logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}")
-                    context = self.create_ssl_context(role="client")
-                    reader, writer = await asyncio.open_connection(host, port, ssl=context)
                     logging.info(
                         f"🔗  [outgoing] Secure connection established with {writer.get_extra_info('peername')}"
                     )

@@ -46,7 +46,9 @@ class Connection:
         self.id = str(id)
         self.host = host
         self.port = port
-        self.addr = f"{host}:{port}"
+        # self.addr = f"{host}:{port}"
+        # BMTD : handle DNS in here
+        self.addr = f"{host}:{port}:participant-{int(port) - 45001}.nebula"
         self.direct = direct
         self.active = active
         self.last_active = time.time()

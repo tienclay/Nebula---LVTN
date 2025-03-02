@@ -344,6 +344,8 @@ class ScenarioManagement:
             with open(participant_file) as f:
                 participant_config = json.load(f)
 
+            # BMTD : add DNS
+            participant_config["network_args"]["dns"] = f"participant-{node_config['id']}.nebula"
             participant_config["network_args"]["ip"] = node_config["ip"]
             participant_config["network_args"]["port"] = int(node_config["port"])
             participant_config["device_args"]["idx"] = node_config["id"]

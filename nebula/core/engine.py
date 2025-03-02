@@ -68,6 +68,8 @@ class Engine:
         self.config = config
         self.idx = config.participant["device_args"]["idx"]
         self.experiment_name = config.participant["scenario_args"]["name"]
+        # BMTD: add DNS support
+        self.dns = config.participant["network_args"]["dns"]
         self.ip = config.participant["network_args"]["ip"]
         self.port = config.participant["network_args"]["port"]
         self.addr = config.participant["network_args"]["addr"]

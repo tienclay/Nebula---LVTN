@@ -36,6 +36,7 @@
     "round": 0
   },
   "network_args": {
+    "dns": "",
     "ip": "",
     "port": 0,
     "addr": "",
