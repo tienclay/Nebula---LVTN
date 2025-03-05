@@ -153,6 +153,8 @@ class Engine:
         )
 
         self.register_message_events_callbacks()
+        # BMTD: add locker for coin-flipping protocol
+        # self.coin_flipping_lock = Locker(name="coin_flipping_lock", async_lock=True)
 
     @property
     def cm(self):
@@ -310,6 +312,19 @@ class Engine:
             logging.exception(f"Error updating round in connection: {e}")
         finally:
             await self.cm.get_connections_lock().release_async()
+            
+    # TODO-BMTD: implement coin-flipping protocol callback to choose federation nodes
+    async def _security_ready_callback(self, source, message):
+        pass
+    
+    async def _security_commit_callback(self, source, message):
+        pass    
+    
+    async def _security_reveal_callback(self, source, message):
+        pass
+    
+    async def _security_verify_callback(self, source, message):
+        pass
 
     async def create_trainer_module(self):
         asyncio.create_task(self._start_learning())
@@ -474,6 +489,9 @@ class Engine:
             self.trainer.on_round_start()
             self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
             logging.info(f"Federation nodes: {self.federation_nodes}")
+            # TODO-BMTD: implement coin-flipping protocol to choose federation nodes
+            # await self.start_coin_flipping_protocol()
+            
             direct_connections = await self.cm.get_addrs_current_connections(only_direct=True)
             undirected_connections = await self.cm.get_addrs_current_connections(only_undirected=True)
             logging.info(f"Direct connections: {direct_connections} | Undirected connections: {undirected_connections}")
@@ -576,6 +594,14 @@ class Engine:
         # )
         message = self.cm.create_message("federation", "reputation", arguments=[str(arg) for arg in (malicious_nodes)])
         await self.cm.send_message_to_neighbors(message)
+        
+    # async def start_coin_flipping_protocol(self):
+    #     current_connections = await self.cm.get_addrs_current_connections(only_direct=True)
+    #     async with self.coin_flipping_lock:
+    #         for node in current_connections:
+    #             message = self.cm.create_message("security", "neighbor_selection_ready")
+    #             logging.info(f"[neighbor-selection] Sending NEIGHBOR_SELECTION_READY to {node}")
+    #             await self.cm.send_message(node, message)
 
 
 class MaliciousNode(Engine):

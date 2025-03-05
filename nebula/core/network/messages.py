@@ -50,6 +50,14 @@ class MessagesManager:
             },
             "reputation": {"parameters": ["reputation"], "defaults": {}},
             # Add additional message types here
+            "security": {
+                "parameters": ["action", "bit", "nonce", "commitment"],
+                "defaults": {
+                    "bit": 0,
+                    "nonce": b"",
+                    "commitment": b"",
+                },
+            },
         }
 
     def get_messages_events(self):
@@ -132,7 +140,7 @@ class MessagesManager:
             return True
 
     def create_message(self, message_type: str, action: str = "", *args, **kwargs):
-        # logging.info(f"Creating message | type: {message_type}, action: {action}, positionals: {args}, explicits: {kwargs.keys()}")
+        logging.info(f"Creating message | type: {message_type}, action: {action}, positionals: {args}, explicits: {kwargs.keys()}")
         # If an action is provided, convert it to its corresponding enum value using the factory
         message_action = None
         if action:

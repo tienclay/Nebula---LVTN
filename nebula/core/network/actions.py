@@ -28,12 +28,21 @@ class ControlAction(Enum):
     RECOVERY = nebula_pb2.ControlMessage.Action.RECOVERY
     WEAK_LINK = nebula_pb2.ControlMessage.Action.WEAK_LINK
 
+class SecurityAction(Enum):
+    NEIGHBOR_SELECTION_READY = nebula_pb2.SecurityMessage.Action.NEIGHBOR_SELECTION_READY
+    NEIGHBOR_SELECTION_COMMIT = nebula_pb2.SecurityMessage.Action.NEIGHBOR_SELECTION_COMMIT
+    NEIGHBOR_SELECTION_REVEAL = nebula_pb2.SecurityMessage.Action.NEIGHBOR_SELECTION_REVEAL
+    NEIGHBOR_SELECTION_VERIFY = nebula_pb2.SecurityMessage.Action.NEIGHBOR_SELECTION_VERIFY
+    
+
 
 ACTION_CLASSES = {
     "connection": ConnectionAction,
     "federation": FederationAction,
     "discovery": DiscoveryAction,
     "control": ControlAction,
+    # Add additional message types here
+    "security": SecurityAction,
 }
 
 

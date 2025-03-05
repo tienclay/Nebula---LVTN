@@ -197,7 +197,7 @@ async def main(config):
         datamodule=datamodule,
         config=config,
         trainer=trainer,
-        security=False,
+        security=True,
     )
     await node.start_communications()
     await node.deploy_federation()

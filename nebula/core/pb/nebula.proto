@@ -79,3 +79,16 @@ message ConnectionMessage {
 message ResponseMessage {
   string response = 1;      // Outcome of the requested operation.
 }
+
+message SecurityMessage {
+  enum Action {
+    NEIGHBOR_SELECTION_READY = 0;
+    NEIGHBOR_SELECTION_COMMIT = 1;
+    NEIGHBOR_SELECTION_REVEAL = 2;
+    NEIGHBOR_SELECTION_VERIFY = 3;
+  }
+  Action action = 1;
+  int32 bit = 2;
+  bytes nonce = 3;
+  bytes commitment = 4;
+}

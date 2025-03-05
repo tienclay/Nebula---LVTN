@@ -28,9 +28,10 @@ from nebula.core.utils.locker import Locker
 
 if TYPE_CHECKING:
     from nebula.core.engine import Engine
-
-import ssl  # TLS 1.3 support
-
+    
+# BMTD: security/encryption - TLS 1.3 support
+import ssl  
+# TODO-BMTD: security/MTD - neighbor selection for randomize connection
 
 class CommunicationsManager:
     def __init__(self, engine: "Engine"):
@@ -77,6 +78,8 @@ class CommunicationsManager:
         self.loop = asyncio.get_event_loop()
         max_concurrent_tasks = 5
         self.semaphore_send_model = asyncio.Semaphore(max_concurrent_tasks)
+        
+        # TODO-BMTD: security/MTD - neighbor selection for randomize connection
 
     @property
     def engine(self):
@@ -326,8 +329,11 @@ class CommunicationsManager:
 
     # Incoming handle
     async def handle_connection(self, reader, writer):
-        # BMTD fix connection from this, it not contain dns, the connections have difference format when the node is incoming
-        # this only handle host and port not dns, so the code not work lol
+        # BMTD: fix connection from this, it not contain dns, the connections have difference format when the node is incoming
+        # NOTE-BMTD: explain why we need to wait 0.1s before close the connection
+        # NOTE-BMTD: in SSL TLS connection, when close the connection, all data must be transmitted before close the connection
+        # NOTE-BMTD: so we use simple way to make sure all data transmitted before close the connection
+        # NOTE-BMTD: the real technique we'll use in future is application‐level acknowledgment protocol
         async def process_connection(reader, writer):
             try:
                 addr = writer.get_extra_info("peername")
@@ -339,8 +345,9 @@ class CommunicationsManager:
                     
                 # BMTD: this code only for get DNS, in real life we implement different way to get DNS
                 connected_node_dns = f"participant-{int(connected_node_port) - 45001}.nebula"
-                                    
                 connection_addr = f"{addr[0]}:{connected_node_port}:{connected_node_dns}"
+                
+                # connection_addr = f"{addr[0]}:{connected_node_port}"
                 direct = await reader.readline()
                 direct = direct.decode("utf-8").strip()
                 direct = True if direct == "True" else False
@@ -352,6 +359,7 @@ class CommunicationsManager:
                     logging.info("🔗  [incoming] Connection with yourself is not allowed")
                     writer.write(b"CONNECTION//CLOSE\n")
                     await writer.drain()
+                    await asyncio.sleep(0.1)  # NOTE-BMTD
                     writer.close()
                     await writer.wait_closed()
                     return
@@ -362,6 +370,7 @@ class CommunicationsManager:
                         logging.info(f"🔗  [incoming] Sending CONNECTION//CLOSE to {addr}")
                         writer.write(b"CONNECTION//CLOSE\n")
                         await writer.drain()
+                        await asyncio.sleep(0.1)  # NOTE-BMTD
                         writer.close()
                         await writer.wait_closed()
                         return
@@ -372,6 +381,7 @@ class CommunicationsManager:
                         logging.info(f"🔗  [incoming] Sending CONNECTION//EXISTS to {addr}")
                         writer.write(b"CONNECTION//EXISTS\n")
                         await writer.drain()
+                        await asyncio.sleep(0.1)  # NOTE-BMTD
                         writer.close()
                         await writer.wait_closed()
                         return
@@ -384,6 +394,7 @@ class CommunicationsManager:
                             )
                             writer.write(b"CONNECTION//CLOSE\n")
                             await writer.drain()
+                            await asyncio.sleep(0.1)  # NOTE-BMTD
                             writer.close()
                             await writer.wait_closed()
                             return
@@ -395,6 +406,7 @@ class CommunicationsManager:
                                 out_reader, out_writer = self.outgoing_connections.pop(connection_addr)
                                 out_writer.write(b"CONNECTION//CLOSE\n")
                                 await out_writer.drain()
+                                await asyncio.sleep(0.1)  # NOTE-BMTD
                                 out_writer.close()
                                 await out_writer.wait_closed()
 
@@ -659,6 +671,7 @@ class CommunicationsManager:
                 dns = str(addr.split(":")[2])
                 logging.info(f"🔗  [outgoing] Going to: Host: {host} | Port: {port} | DNS: {dns}")
                 
+                # TODO-BMTD: implement another connection check when we only have dns (for dynamic IP purpose, we don't use host and port in future)
                 if host == self.host and port == self.port:
                     logging.info("🔗  [outgoing] Connection with yourself is not allowed")
                     return False
@@ -688,7 +701,7 @@ class CommunicationsManager:
                     self.pending_connections.add(addr)
                     logging.info(f"🔗  [outgoing] Including {addr} in pending connections: {self.pending_connections}")
 
-                # To test when security is on/off - use TLS 1.3 for secure connections
+                # BMTD: To test when security is on/off - use TLS 1.3 for secure connections
                 if self.engine.security:
                     logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}:{dns}")
                     context = self.create_ssl_context(role="client")
