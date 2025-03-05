@@ -99,6 +99,9 @@
                         <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
                             <input type="checkbox" id="mod-median" value="Median" style="margin-right: 10px; margin-left: 10px;">Median
                         </label>
+                        <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
+                            <input type="checkbox" id="mod-balance" value="Balance" style="margin-right: 10px; margin-left: 10px;">Balance
+                        </label>
                     </div>
                     <hr>
                     <h5>Topology <i class="fa fa-sitemap"></i>
@@ -369,6 +372,7 @@
                             <option>TrimmedMean</option>
                             <option>Median</option>
                             <option>BlockchainReputation</option>
+                            <option>Balance</option>
                         </select>
                     </div>
                 </div>
@@ -632,6 +636,7 @@
                                     <option>FedAvg</option>
                                     <option>TrimmedMean</option>
                                     <option>Median</option>
+                                    <option>Balance</option>
                                 </select>
                             </div>
                         </div>
@@ -1992,7 +1997,7 @@
 
         //Check all the options
         document.getElementById("mod-aggregation").addEventListener("change", function() {
-            selectALL(['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median'], document.getElementById("mod-aggregation").checked);
+            selectALL(['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median', 'mod-balance'], document.getElementById("mod-aggregation").checked);
         });
         document.getElementById("mod-topology").addEventListener("change", function() {
             selectALL(['mod-fully', 'mod-ring', 'mod-star'], document.getElementById("mod-topology").checked);
@@ -2008,7 +2013,7 @@
         //Generate a scenario
         function generateScenarios(){
             //One or more options selected in every case
-            var aggregation_methods = ['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median'];
+            var aggregation_methods = ['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median', 'mod-balance'];
             if (!atLeastOneChecked(aggregation_methods)) {
                 alert("Please, select one aggregation method at least.");
                 return;
