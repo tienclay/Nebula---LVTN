@@ -140,7 +140,8 @@ class MessagesManager:
             return True
 
     def create_message(self, message_type: str, action: str = "", *args, **kwargs):
-        logging.info(f"Creating message | type: {message_type}, action: {action}, positionals: {args}, explicits: {kwargs.keys()}")
+        # logging.info(f"Creating message | type: {message_type}, action: {action}, positionals: {args}, explicits: {kwargs.keys()}")
+        logging.info(f"Creating message | type: {message_type}, action: {action}")
         # If an action is provided, convert it to its corresponding enum value using the factory
         message_action = None
         if action:
