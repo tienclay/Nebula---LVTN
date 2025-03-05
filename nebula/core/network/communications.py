@@ -344,7 +344,7 @@ class CommunicationsManager:
                     connected_node_id, connected_node_port = connected_node_id.split(":")
                     
                 # BMTD: this code only for get DNS, in real life we implement different way to get DNS
-                connected_node_dns = f"participant-{int(connected_node_port) - 45001}.nebula"
+                connected_node_dns = f"participant-{connected_node_id}.nebula"
                 connection_addr = f"{addr[0]}:{connected_node_port}:{connected_node_dns}"
                 
                 # connection_addr = f"{addr[0]}:{connected_node_port}"
