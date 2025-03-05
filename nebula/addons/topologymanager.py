@@ -444,7 +444,7 @@ class TopologyManager:
             if node == 1:
                 neighbors_data.append(self.nodes[i])
 
-        neighbors_data_strings = [f"{i[0]}:{i[1]}:{int(i[1]) - 45001}" for i in neighbors_data]
+        neighbors_data_strings = [f"{i[0]}:{i[1]}:participant-{int(i[1]) - 45001}.nebula" for i in neighbors_data]
         # neighbors_data_strings = [f"{i[0]}:{i[1]}" for i in neighbors_data]
         neighbors_data_string = " ".join(neighbors_data_strings)
         logging.info(f"Neighbors of node participant_{node_idx}: {neighbors_data_string}")
