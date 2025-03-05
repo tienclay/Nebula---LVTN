@@ -116,5 +116,8 @@ class ModelPoisonAttack(ModelAttack):
             any: The modified model weights after applying the poisoning attack.
         """
         logging.info("[ModelPoisonAttack] Performing model poison attack")
+        # // print received_weights
+        
+        print(received_weights)
         received_weights = self.modelPoison(received_weights, self.poisoned_ratio, self.noise_type)
         return received_weights

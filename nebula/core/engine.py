@@ -466,6 +466,7 @@ class Engine:
             )
             self.trainer.on_round_start()
             self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
+            logging.info("Clay is here")
             logging.info(f"Federation nodes: {self.federation_nodes}")
             direct_connections = await self.cm.get_addrs_current_connections(only_direct=True)
             undirected_connections = await self.cm.get_addrs_current_connections(only_undirected=True)
