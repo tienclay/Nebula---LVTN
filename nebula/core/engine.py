@@ -153,6 +153,9 @@ class Engine:
         )
 
         self.register_message_events_callbacks()
+        
+        # BMTD: neighbor selection
+        self.randomized_federation_nodes = set()
 
     @property
     def cm(self):
@@ -503,20 +506,21 @@ class Engine:
                 title="Round information",
             )
             self.trainer.on_round_start()
-            self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
-            logging.info(f"Federation nodes: {self.federation_nodes}")
+            # self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
+            # logging.info(f"Federation nodes: {self.federation_nodes}")
             
             direct_connections = await self.cm.get_addrs_current_connections(only_direct=True)
             undirected_connections = await self.cm.get_addrs_current_connections(only_undirected=True)
             logging.info(f"Direct connections: {direct_connections} | Undirected connections: {undirected_connections}")
             logging.info(f"[Role {self.role}] Starting learning cycle...")
             
-            # TODO-BMTD: implement coin-flipping protocol to choose federation nodes
+            # BMTD: implement coin-flipping protocol to choose federation nodes
             logging.info(f"[neighbor-selection] 🪙 Start coin-flipping protocol")
-            randomized_federation = await self.start_coin_flipping_protocol()
+            await self.start_coin_flipping_protocol()
             logging.info(f"[neighbor-selection] 🪙 Coin-flipping protocol finished")
             
-            logging.info(f"Randomized federation nodes: {randomized_federation}")
+            logging.info(f"Randomized federation nodes: {self.randomized_federation_nodes}")
+            self.federation_nodes = await self.get_randomized_federation_nodes(myself=True)
             logging.info(f"Current connections: {self.federation_nodes}")
             
             await self.aggregator.update_federation_nodes(self.federation_nodes)
@@ -654,11 +658,10 @@ class Engine:
             logging.error(f"[neighbor-selection] ❌ Unexpected Error: {e}")
 
         finally:
-            randomized_federation = await self.cm.get_addrs_neighbor_selection_connections(only_direct=True, myself=True)
+            self.randomized_federation_nodes = await self.cm.get_addrs_neighbor_selection_connections(only_direct=True)
             # Reset security data for the next round
             await self.cm.initialize_security_neighbor_data()
             logging.info("[neighbor-selection] ↩️ Reset security data and messages for the next round")
-            return randomized_federation
 
     async def wait_for_all_ready(self, peers, timeout=60):
         """Ensures all nodes reach the READY phase before proceeding."""
@@ -793,6 +796,12 @@ class Engine:
             await self.cm.send_message(peer, message)
             logging.info(f"[neighbor-selection] ❌ Malicious: {peer} did not send correct bit and nonce.")
             return False
+        
+    async def get_randomized_federation_nodes(self, myself = False):
+        nodes = self.randomized_federation_nodes.copy() # set can be modified during iteration
+        if myself:
+            nodes.add(self.addr)
+        return nodes
 
 class MaliciousNode(Engine):
     def __init__(

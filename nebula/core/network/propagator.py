@@ -160,6 +160,15 @@ class Propagator:
 
         round_number = -1 if strategy_id == "initialization" else self.get_round()
 
+        # TODO-BMTD: neighbor selections - check this code to handle random federations
+        # check if strategy_id is "initialization" we don't get randomized
+        if strategy_id != "initialization":
+            randomize_federation_nodes = await self.engine.get_randomized_federation_nodes()
+            logging.info(f"Randomized federation nodes: {randomize_federation_nodes}")
+            eligible_neighbors = [
+                neighbor_addr for neighbor_addr in randomize_federation_nodes if strategy.is_node_eligible(neighbor_addr)
+            ]
+
         for neighbor_addr in eligible_neighbors:
             asyncio.create_task(self.cm.send_model(neighbor_addr, round_number, serialized_model, weight))
 
