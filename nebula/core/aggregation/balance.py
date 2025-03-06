@@ -20,9 +20,9 @@ class Balance(Aggregator):
     def __init__(
         self,
         config=None,
-        gamma=0.3,  # gamma > 0
+        gamma=1.5,  # gamma > 0
         kappa=1.0,  # kappa > 0
-        R=2.0,  # R > 0
+        R=20,  # R > 0
         alpha=0.5,  # blend factor
         **kwargs,
     ):
@@ -47,6 +47,8 @@ class Balance(Aggregator):
         """
         # 1) Call parent aggregator method (as in your Krum example)
         super().run_aggregation(models)
+        # log round R
+        logging.info(f"Round R: {self.R}")
 
         # 2) Identify the local model via the node's address
         local_addr = self.config.participant["network_args"]["addr"]
@@ -64,13 +66,25 @@ class Balance(Aggregator):
             return math.sqrt(total)
 
         def model_distance(m1, m2):
-            # Euclidean distance between two model dicts
-            dist = 0.0
+            dist_sq = 0.0
             for layer in m1:
-                l1 = m1[layer]
-                l2 = m2[layer]
-                dist += numpy.linalg.norm((l1 - l2).cpu().numpy())
-            return dist
+                diff = (m1[layer] - m2[layer]).float()
+                dist_sq += torch.sum(diff * diff).item()
+            return math.sqrt(dist_sq)
+
+        # def model_distance(m1, m2):
+        #     dist_sq = 0.0
+        #     for layer in m1:
+        #         if layer in m2:
+        #             dist_sq += numpy.linalg.norm(m1 - m2)
+
+        #             logging.debug(f"Layer {layer}: dist_sq = {dist_sq.item()}") # Added logging
+        #         else:
+        #             logging.debug(f"Warning: Layer {layer} not found in both models. Skipping.")
+        #     result = torch.sqrt(torch.tensor(dist_sq)).item()
+        #     logging.debug(f"Total distance: {result}") # Added logging
+        #     return result
+
 
         # 4) Compute threshold = gamma * exp(-kappa * lambda(t)) * ||local_model||
         #    If you track the round, e.g. self.current_round, use that. Otherwise, default to 0.
@@ -79,9 +93,9 @@ class Balance(Aggregator):
         decay_factor = math.exp(-self.kappa * lam_t)
         threshold = self.gamma * decay_factor * model_norm(local_model)
 
-        logging.info(f"Node {local_addr} is running Balance for round {t}.")
-        logging.info(f"Threshold: {threshold:.4f}")
-        logging.info(f"Local model norm: {model_norm(local_model):.4f}")
+        logging.debug(f"Node {local_addr} is running Balance for round {t}.")
+        logging.debug(f"Threshold: {threshold:.4f}")
+
 
         # 5) Collect all "similar" models
         #    We'll do a weighted average (using their second value).
@@ -94,6 +108,9 @@ class Balance(Aggregator):
                 continue
 
             dist = model_distance(local_model, nbr_model)
+            logging.debug(f"Local model norm: {model_norm(local_model):.4f}")
+            logging.debug(f"Neighbor {addr} norm: {model_norm(nbr_model):.4f}")
+            logging.debug(f"Distance to {addr}: {dist:.4f}")
             if dist <= threshold:
                 # This neighbor is considered "similar"
                 for layer in similar_accum:
@@ -104,7 +121,7 @@ class Balance(Aggregator):
         #    (a) return local model unchanged, or
         #    (b) proceed with no similar neighbors
         if total_weight_similar == 0:
-            print("No neighbors passed similarity check. Returning local model.")
+            logging.debug("No neighbors passed similarity check. Returning local model.")
             return local_model
 
         logging.info(f"Total similar neighbors: {len(similar_accum)}")

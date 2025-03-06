@@ -464,6 +464,9 @@ class Engine:
                 indent=2,
                 title="Round information",
             )
+            # print local model
+            local_model = self.trainer.get_model_parameters()
+            logging.debug(f"Local model at the begining of round {self.round}: {local_model}")
             self.trainer.on_round_start()
             self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
             logging.info(f"Federation nodes: {self.federation_nodes}")
