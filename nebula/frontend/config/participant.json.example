@@ -28,6 +28,8 @@
     "logging": false
   },
   "security_args": {
+    "encryption": false,
+    "mtd": false,
     "certfile": "",
     "keyfile": "",
     "cafile": ""
@@ -36,6 +38,7 @@
     "round": 0
   },
   "network_args": {
+    "dns": "",
     "ip": "",
     "port": 0,
     "addr": "",

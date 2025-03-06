@@ -53,8 +53,13 @@ class Config:
         self.participant["device_args"]["name"] = (
             f"participant_{self.participant['device_args']['idx']}_{self.participant['network_args']['ip']}_{self.participant['network_args']['port']}"
         )
+        # self.participant["network_args"]["addr"] = (
+        #     f"{self.participant['network_args']['ip']}:{self.participant['network_args']['port']}"
+        # )
+        
+        # BMTD : handle DNS in here
         self.participant["network_args"]["addr"] = (
-            f"{self.participant['network_args']['ip']}:{self.participant['network_args']['port']}"
+            f"{self.participant['network_args']['ip']}:{self.participant['network_args']['port']}:{self.participant['network_args']['dns']}"
         )
 
     def __set_default_logging(self):

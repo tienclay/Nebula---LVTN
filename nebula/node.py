@@ -24,7 +24,7 @@ from nebula.core.datasets.emnist.emnist import EMNISTPartitionHandler
 from nebula.core.datasets.fashionmnist.fashionmnist import FashionMNISTPartitionHandler
 from nebula.core.datasets.mnist.mnist import MNISTPartitionHandler
 from nebula.core.datasets.nebuladataset import NebulaPartition
-from nebula.core.engine import AggregatorNode, IdleNode, MaliciousNode, ServerNode, TrainerNode
+from nebula.core.engine import AggregatorNode, IdleNode, MaliciousNode, ServerNode, TrainerNode, SecurityConfig
 from nebula.core.models.cifar10.cnn import CIFAR10ModelCNN
 from nebula.core.models.cifar10.cnnV2 import CIFAR10ModelCNN_V2
 from nebula.core.models.cifar10.cnnV3 import CIFAR10ModelCNN_V3
@@ -192,12 +192,17 @@ async def main(config):
 
     logging.info(f"Starting node {idx} with model {model_name}, trainer {trainer.__name__}, and as {node_cls.__name__}")
 
+    # BMTD: security_config
+    encryption = config.participant["security_args"]["encryption"]
+    mtd = config.participant["security_args"]["mtd"]
+    security_config = SecurityConfig(encryption=encryption, mtd=mtd)
+
     node = node_cls(
         model=model,
         datamodule=datamodule,
         config=config,
         trainer=trainer,
-        security=False,
+        security=security_config,
     )
     await node.start_communications()
     await node.deploy_federation()

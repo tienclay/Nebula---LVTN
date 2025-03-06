@@ -50,6 +50,15 @@ class MessagesManager:
             },
             "reputation": {"parameters": ["reputation"], "defaults": {}},
             # Add additional message types here
+            "security": {
+                "parameters": ["action", "bit", "nonce", "commitment", "verified"],
+                "defaults": {
+                    "bit": 0,
+                    "nonce": b"",
+                    "commitment": b"",
+                    "verified": False,
+                },
+            },
         }
 
     def get_messages_events(self):
@@ -62,6 +71,7 @@ class MessagesManager:
     async def process_message(self, data, addr_from):
         not_processing_messages = {"control_message", "connection_message"}
         special_processing_messages = {"discovery_message", "federation_message", "model_message"}
+        coin_flipping_messages = {"security_message"}
 
         try:
             message_wrapper = nebula_pb2.Wrapper()
@@ -104,6 +114,13 @@ class MessagesManager:
                             (msg_name, get_action_name_from_value(msg_name, message_data.action)), source, message_data
                         )
                         await self.cm.handle_message(me)
+            # BMTD: handle coin-flipping message for each round
+            elif message_type in coin_flipping_messages:
+                if await self.cm.include_neighbor_selection_received_message_hash(hashlib.md5(data).hexdigest()):
+                    me = MessageEvent(
+                            (msg_name, get_action_name_from_value(msg_name, message_data.action)), source, message_data
+                        )
+                    await self.cm.handle_message(me)
             # Rest of messages
             else:
                 if await self.cm.include_received_message_hash(hashlib.md5(data).hexdigest()):
@@ -133,6 +150,7 @@ class MessagesManager:
 
     def create_message(self, message_type: str, action: str = "", *args, **kwargs):
         # logging.info(f"Creating message | type: {message_type}, action: {action}, positionals: {args}, explicits: {kwargs.keys()}")
+        logging.info(f"Creating message | type: {message_type}, action: {action}")
         # If an action is provided, convert it to its corresponding enum value using the factory
         message_action = None
         if action:
