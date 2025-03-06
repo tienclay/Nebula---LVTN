@@ -2,7 +2,6 @@ import gc
 import logging
 import math
 
-import numpy
 import torch
 
 from nebula.core.aggregation.aggregator import Aggregator
@@ -85,7 +84,6 @@ class Balance(Aggregator):
         #     logging.debug(f"Total distance: {result}") # Added logging
         #     return result
 
-
         # 4) Compute threshold = gamma * exp(-kappa * lambda(t)) * ||local_model||
         #    If you track the round, e.g. self.current_round, use that. Otherwise, default to 0.
         t = self.engine.round
@@ -95,7 +93,6 @@ class Balance(Aggregator):
 
         logging.debug(f"Node {local_addr} is running Balance for round {t}.")
         logging.debug(f"Threshold: {threshold:.4f}")
-
 
         # 5) Collect all "similar" models
         #    We'll do a weighted average (using their second value).
