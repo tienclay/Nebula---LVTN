@@ -6,7 +6,7 @@ import subprocess
 import sys
 import traceback
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict, Literal, Dict, cast
 
 import requests
 
@@ -32,6 +32,29 @@ if TYPE_CHECKING:
 # BMTD: security/encryption - TLS 1.3 support
 import ssl  
 # TODO-BMTD: security/MTD - neighbor selection for randomize connection
+import secrets
+import hashlib
+
+from collections import defaultdict
+class ReadyData(TypedDict):
+    status: bool
+class CommitData(TypedDict):
+    status: bool
+    commitment: bytes
+class RevealData(TypedDict):
+    status: bool
+    bit: Literal[0, 1]
+    nonce: bytes
+class SelfCommitmentData(TypedDict):
+    bit: Literal[0, 1]
+    nonce: bytes
+    commitment: bytes
+class SecurityNeighborData(TypedDict):
+    ready_phase: ReadyData
+    commit_phase: CommitData
+    reveal_phase: RevealData
+    self_commitment: SelfCommitmentData
+    connect: bool
 
 class CommunicationsManager:
     def __init__(self, engine: "Engine"):
@@ -80,6 +103,20 @@ class CommunicationsManager:
         self.semaphore_send_model = asyncio.Semaphore(max_concurrent_tasks)
         
         # TODO-BMTD: security/MTD - neighbor selection for randomize connection
+        # NOTE-BMTD: race condition problem with dict keys see this: https://stackoverflow.com/questions/3358770/python-dictionary-is-thread-safe
+        # Then we need to initialize peer first to have constant size of dict
+        # It's safe to change peer data in runtime with difference lock, but not safe to change the size of dict
+        self.neighbor_selection_data : Dict[str,SecurityNeighborData] = {}
+        self.neighbor_selection_received_messages_hashes = collections.deque(
+            maxlen=self.config.participant["message_args"]["max_local_messages"]
+        )
+        self.neighbor_selection_messages_lock = Locker(name="neighbor_selection_messages_lock", async_lock=True)
+        self.neighbor_selection_connections = {}
+        self.neighbor_selection_connections_lock = Locker(name="neighbor_selection_connections_lock", async_lock=True)
+        
+        # BMTD: add locker for coin-flipping protocol
+        self.coin_flipping_lock = Locker(name="coin_flipping_lock", async_lock=True)
+        self.neighbor_selection_lock = defaultdict(lambda: Locker(name="neighbor_selection_lock_" + str(len(self.neighbor_selection_lock)), async_lock=True))
 
     @property
     def engine(self):
@@ -112,6 +149,23 @@ class CommunicationsManager:
     @property
     def mobility(self):
         return self._mobility
+    
+    # BMTD: default dict for security/MTD - neighbor selection for randomize connection
+    @staticmethod
+    def default_security_neighbor_data() -> SecurityNeighborData:
+        return {
+            "ready_phase": {"status": False},
+            "commit_phase": {"status": False, "commitment": b""},
+            "reveal_phase": {"status": False, "bit": 0, "nonce": b""},
+            "self_commitment": {"bit": 0, "nonce": b"", "commitment": b""},
+            "connect": False
+        }   
+        
+    async def initialize_security_neighbor_data(self):
+        current_neighbors = await self.get_all_addrs_current_connections(only_direct=True)
+        self.neighbor_selection_data = {addr: self.default_security_neighbor_data() for addr in current_neighbors}
+        await self.restart_neighbor_selection_received_message_hash()
+        self.neighbor_selection_connections.clear()
 
     async def check_federation_ready(self):
         # Check if all my connections are in ready_connections
@@ -344,7 +398,7 @@ class CommunicationsManager:
                     connected_node_id, connected_node_port = connected_node_id.split(":")
                     
                 # BMTD: this code only for get DNS, in real life we implement different way to get DNS
-                connected_node_dns = f"participant-{int(connected_node_port) - 45001}.nebula"
+                connected_node_dns = f"participant-{connected_node_id}.nebula"
                 connection_addr = f"{addr[0]}:{connected_node_port}:{connected_node_dns}"
                 
                 # connection_addr = f"{addr[0]}:{connected_node_port}"
@@ -618,7 +672,29 @@ class CommunicationsManager:
             return False
         finally:
             await self.receive_messages_lock.release_async()
+    
+    # BMTD: handle coin-flipping message
+    async def include_neighbor_selection_received_message_hash(self, hash_message):
+        try:
+            await self.neighbor_selection_messages_lock.acquire_async()
+            if hash_message in self.neighbor_selection_received_messages_hashes:
+                logging.info(f"[neighbor-selection]❗️  handle_incoming_message | Ignoring message already received.")
+                return False
+            self.neighbor_selection_received_messages_hashes.append(hash_message)
+            if len(self.neighbor_selection_received_messages_hashes) % 10000 == 0:
+                logging.info(f"📥  Received {len(self.neighbor_selection_received_messages_hashes)} messages")
+            return True
+        except Exception as e:
+            logging.exception(f"[neighbor-selection]❗️  handle_incoming_message | Error including message hash: {e}")
+            return False
+        finally:
+            await self.neighbor_selection_messages_lock.release_async()
 
+    # BMTD: restart message hash after round
+    async def restart_neighbor_selection_received_message_hash(self):
+        async with self.neighbor_selection_messages_lock:
+            self.neighbor_selection_received_messages_hashes.clear()
+            
     async def send_message_to_neighbors(self, message, neighbors=None, interval=0):
         if neighbors is None:
             current_connections = await self.get_all_addrs_current_connections(only_direct=True)
@@ -954,3 +1030,75 @@ class CommunicationsManager:
 
     def __str__(self):
         return f"Connections: {[str(conn) for conn in self.connections.values()]}"
+
+    # BMTD: security/MTD - coin-flipping for commit and reveal phase
+    def get_neighbor_selection_lock(self, peer):
+        return self.neighbor_selection_lock[peer]
+    
+    @staticmethod
+    def hash_commitment(bit, nonce):
+        return hashlib.sha256(bit.to_bytes(1, byteorder="big") + nonce).digest()
+    
+    @staticmethod
+    def xor(a: Literal[0,1], b: Literal[0,1]) -> Literal[0,1]:
+        return a ^ b 
+    
+    async def verify_neighbor_selection_connection(self, peer):
+        peer_bit = self.neighbor_selection_data[peer]["reveal_phase"]["bit"]
+        mine_bit = self.neighbor_selection_data[peer]["self_commitment"]["bit"]
+        verify_status = CommunicationsManager.xor(peer_bit, mine_bit) 
+        logging.info(f"[neighbor-selection]🔗 Verify status with {peer}: peer_bit = {peer_bit}, mine_bit = {mine_bit}, result = {verify_status}")
+        # BMTD: (1,0) and (0,1) -> connection is established else not
+        if verify_status == 1:
+            async with self.neighbor_selection_connections_lock:
+                self.neighbor_selection_connections.update({peer: self.connections[peer]})
+            logging.info(f"[neighbor-selection] {len(self.neighbor_selection_connections)} neighbors are selected for exchanging model")
+            logging.info(f"[neighbor-selection]🔗 Chossing neighbor {peer} for exchanging model")
+        
+    
+    async def get_all_addrs_neighbor_selection_connections(self, only_direct=False, only_undirected=False):
+        try:
+            await self.neighbor_selection_connections_lock.acquire_async()
+            logging.info(f"[neighbor-selection]🔗 Getting all neighbor selection connections {len(self.neighbor_selection_connections)}")
+            if only_direct:
+                return {addr for addr, conn in self.neighbor_selection_connections.items() if conn.get_direct()}
+            elif only_undirected:
+                return {addr for addr, conn in self.neighbor_selection_connections.items() if not conn.get_direct()}
+            else:
+                return set(self.neighbor_selection_connections.keys())
+        finally:
+            await self.neighbor_selection_connections_lock.release_async()
+    
+    async def get_addrs_neighbor_selection_connections(self, only_direct=False, only_undirected=False, myself=False):
+        neighbor_selection_connections = await self.get_all_addrs_neighbor_selection_connections(
+            only_direct=only_direct, only_undirected=only_undirected
+        )
+        neighbor_selection_connections = set(neighbor_selection_connections)
+        if myself:
+            neighbor_selection_connections.add(self.addr)
+        return neighbor_selection_connections
+    
+    async def security_commit_phase(self, peer):
+        bit = cast(Literal[0,1],secrets.randbits(1))
+        nonce = secrets.token_bytes(16)
+        commitment = self.hash_commitment(bit, nonce)
+        self.neighbor_selection_data[peer]["self_commitment"]["bit"] = bit
+        self.neighbor_selection_data[peer]["self_commitment"]["nonce"] = nonce
+        self.neighbor_selection_data[peer]["self_commitment"]["commitment"] = commitment
+        return commitment
+    
+    async def security_verify_phase(self, peer):
+        peer_bit = self.neighbor_selection_data.get(peer, {}).get("reveal_phase", {}).get("bit")
+        peer_nonce = self.neighbor_selection_data.get(peer, {}).get("reveal_phase", {}).get("nonce")
+        peer_commitment = self.neighbor_selection_data.get(peer, {}).get("commit_phase", {}).get("commitment")
+        
+        mine_bit = self.neighbor_selection_data.get(peer, {}).get("self_commitment", {}).get("bit")
+        mine_nonce = self.neighbor_selection_data.get(peer, {}).get("self_commitment", {}).get("nonce")
+        mine_commitment = self.neighbor_selection_data.get(peer, {}).get("self_commitment", {}).get("commitment")
+        
+        # Two phase checking, first check the same with self commitment to avoid replay attack
+        if peer_bit == mine_bit and peer_nonce == mine_nonce and peer_commitment == mine_commitment:
+            raise Exception("[neighbor-selection]❗️ Malicious: Peer is trying to do replay attack")
+        
+        # Second phase checking, check the same with peer commitment
+        return CommunicationsManager.hash_commitment(peer_bit, peer_nonce) == peer_commitment

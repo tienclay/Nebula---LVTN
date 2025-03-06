@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cnebula.proto\x12\x06nebula\"\xe4\x02\n\x07Wrapper\x12\x0e\n\x06source\x18\x01 \x01(\t\x12\x35\n\x11\x64iscovery_message\x18\x02 \x01(\x0b\x32\x18.nebula.DiscoveryMessageH\x00\x12\x31\n\x0f\x63ontrol_message\x18\x03 \x01(\x0b\x32\x16.nebula.ControlMessageH\x00\x12\x37\n\x12\x66\x65\x64\x65ration_message\x18\x04 \x01(\x0b\x32\x19.nebula.FederationMessageH\x00\x12-\n\rmodel_message\x18\x05 \x01(\x0b\x32\x14.nebula.ModelMessageH\x00\x12\x37\n\x12\x63onnection_message\x18\x06 \x01(\x0b\x32\x19.nebula.ConnectionMessageH\x00\x12\x33\n\x10response_message\x18\x07 \x01(\x0b\x32\x17.nebula.ResponseMessageH\x00\x42\t\n\x07message\"\x9e\x01\n\x10\x44iscoveryMessage\x12/\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32\x1f.nebula.DiscoveryMessage.Action\x12\x10\n\x08latitude\x18\x02 \x01(\x02\x12\x11\n\tlongitude\x18\x03 \x01(\x02\"4\n\x06\x41\x63tion\x12\x0c\n\x08\x44ISCOVER\x10\x00\x12\x0c\n\x08REGISTER\x10\x01\x12\x0e\n\nDEREGISTER\x10\x02\"\x9a\x01\n\x0e\x43ontrolMessage\x12-\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32\x1d.nebula.ControlMessage.Action\x12\x0b\n\x03log\x18\x02 \x01(\t\"L\n\x06\x41\x63tion\x12\t\n\x05\x41LIVE\x10\x00\x12\x0c\n\x08OVERHEAD\x10\x01\x12\x0c\n\x08MOBILITY\x10\x02\x12\x0c\n\x08RECOVERY\x10\x03\x12\r\n\tWEAK_LINK\x10\x04\"\xcd\x01\n\x11\x46\x65\x64\x65rationMessage\x12\x30\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32 .nebula.FederationMessage.Action\x12\x11\n\targuments\x18\x02 \x03(\t\x12\r\n\x05round\x18\x03 \x01(\x05\"d\n\x06\x41\x63tion\x12\x14\n\x10\x46\x45\x44\x45RATION_START\x10\x00\x12\x0e\n\nREPUTATION\x10\x01\x12\x1e\n\x1a\x46\x45\x44\x45RATION_MODELS_INCLUDED\x10\x02\x12\x14\n\x10\x46\x45\x44\x45RATION_READY\x10\x03\"A\n\x0cModelMessage\x12\x12\n\nparameters\x18\x01 \x01(\x0c\x12\x0e\n\x06weight\x18\x02 \x01(\x03\x12\r\n\x05round\x18\x03 \x01(\x05\"l\n\x11\x43onnectionMessage\x12\x30\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32 .nebula.ConnectionMessage.Action\"%\n\x06\x41\x63tion\x12\x0b\n\x07\x43ONNECT\x10\x00\x12\x0e\n\nDISCONNECT\x10\x01\"#\n\x0fResponseMessage\x12\x10\n\x08response\x18\x01 \x01(\t\"\xf7\x01\n\x0fSecurityMessage\x12.\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32\x1e.nebula.SecurityMessage.Action\x12\x0b\n\x03\x62it\x18\x02 \x01(\x05\x12\r\n\x05nonce\x18\x03 \x01(\x0c\x12\x12\n\ncommitment\x18\x04 \x01(\x0c\"\x83\x01\n\x06\x41\x63tion\x12\x1c\n\x18NEIGHBOR_SELECTION_READY\x10\x00\x12\x1d\n\x19NEIGHBOR_SELECTION_COMMIT\x10\x01\x12\x1d\n\x19NEIGHBOR_SELECTION_REVEAL\x10\x02\x12\x1d\n\x19NEIGHBOR_SELECTION_VERIFY\x10\x03\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cnebula.proto\x12\x06nebula\"\x99\x03\n\x07Wrapper\x12\x0e\n\x06source\x18\x01 \x01(\t\x12\x35\n\x11\x64iscovery_message\x18\x02 \x01(\x0b\x32\x18.nebula.DiscoveryMessageH\x00\x12\x31\n\x0f\x63ontrol_message\x18\x03 \x01(\x0b\x32\x16.nebula.ControlMessageH\x00\x12\x37\n\x12\x66\x65\x64\x65ration_message\x18\x04 \x01(\x0b\x32\x19.nebula.FederationMessageH\x00\x12-\n\rmodel_message\x18\x05 \x01(\x0b\x32\x14.nebula.ModelMessageH\x00\x12\x37\n\x12\x63onnection_message\x18\x06 \x01(\x0b\x32\x19.nebula.ConnectionMessageH\x00\x12\x33\n\x10response_message\x18\x07 \x01(\x0b\x32\x17.nebula.ResponseMessageH\x00\x12\x33\n\x10security_message\x18\x08 \x01(\x0b\x32\x17.nebula.SecurityMessageH\x00\x42\t\n\x07message\"\x9e\x01\n\x10\x44iscoveryMessage\x12/\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32\x1f.nebula.DiscoveryMessage.Action\x12\x10\n\x08latitude\x18\x02 \x01(\x02\x12\x11\n\tlongitude\x18\x03 \x01(\x02\"4\n\x06\x41\x63tion\x12\x0c\n\x08\x44ISCOVER\x10\x00\x12\x0c\n\x08REGISTER\x10\x01\x12\x0e\n\nDEREGISTER\x10\x02\"\x9a\x01\n\x0e\x43ontrolMessage\x12-\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32\x1d.nebula.ControlMessage.Action\x12\x0b\n\x03log\x18\x02 \x01(\t\"L\n\x06\x41\x63tion\x12\t\n\x05\x41LIVE\x10\x00\x12\x0c\n\x08OVERHEAD\x10\x01\x12\x0c\n\x08MOBILITY\x10\x02\x12\x0c\n\x08RECOVERY\x10\x03\x12\r\n\tWEAK_LINK\x10\x04\"\xcd\x01\n\x11\x46\x65\x64\x65rationMessage\x12\x30\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32 .nebula.FederationMessage.Action\x12\x11\n\targuments\x18\x02 \x03(\t\x12\r\n\x05round\x18\x03 \x01(\x05\"d\n\x06\x41\x63tion\x12\x14\n\x10\x46\x45\x44\x45RATION_START\x10\x00\x12\x0e\n\nREPUTATION\x10\x01\x12\x1e\n\x1a\x46\x45\x44\x45RATION_MODELS_INCLUDED\x10\x02\x12\x14\n\x10\x46\x45\x44\x45RATION_READY\x10\x03\"A\n\x0cModelMessage\x12\x12\n\nparameters\x18\x01 \x01(\x0c\x12\x0e\n\x06weight\x18\x02 \x01(\x03\x12\r\n\x05round\x18\x03 \x01(\x05\"l\n\x11\x43onnectionMessage\x12\x30\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32 .nebula.ConnectionMessage.Action\"%\n\x06\x41\x63tion\x12\x0b\n\x07\x43ONNECT\x10\x00\x12\x0e\n\nDISCONNECT\x10\x01\"#\n\x0fResponseMessage\x12\x10\n\x08response\x18\x01 \x01(\t\"\x89\x02\n\x0fSecurityMessage\x12.\n\x06\x61\x63tion\x18\x01 \x01(\x0e\x32\x1e.nebula.SecurityMessage.Action\x12\x0b\n\x03\x62it\x18\x02 \x01(\x05\x12\r\n\x05nonce\x18\x03 \x01(\x0c\x12\x12\n\ncommitment\x18\x04 \x01(\x0c\x12\x10\n\x08verified\x18\x05 \x01(\x08\"\x83\x01\n\x06\x41\x63tion\x12\x1c\n\x18NEIGHBOR_SELECTION_READY\x10\x00\x12\x1d\n\x19NEIGHBOR_SELECTION_COMMIT\x10\x01\x12\x1d\n\x19NEIGHBOR_SELECTION_REVEAL\x10\x02\x12\x1d\n\x19NEIGHBOR_SELECTION_VERIFY\x10\x03\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'nebula_pb2', globals())
@@ -21,29 +21,29 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _WRAPPER._serialized_start=25
-  _WRAPPER._serialized_end=381
-  _DISCOVERYMESSAGE._serialized_start=384
-  _DISCOVERYMESSAGE._serialized_end=542
-  _DISCOVERYMESSAGE_ACTION._serialized_start=490
-  _DISCOVERYMESSAGE_ACTION._serialized_end=542
-  _CONTROLMESSAGE._serialized_start=545
-  _CONTROLMESSAGE._serialized_end=699
-  _CONTROLMESSAGE_ACTION._serialized_start=623
-  _CONTROLMESSAGE_ACTION._serialized_end=699
-  _FEDERATIONMESSAGE._serialized_start=702
-  _FEDERATIONMESSAGE._serialized_end=907
-  _FEDERATIONMESSAGE_ACTION._serialized_start=807
-  _FEDERATIONMESSAGE_ACTION._serialized_end=907
-  _MODELMESSAGE._serialized_start=909
-  _MODELMESSAGE._serialized_end=974
-  _CONNECTIONMESSAGE._serialized_start=976
-  _CONNECTIONMESSAGE._serialized_end=1084
-  _CONNECTIONMESSAGE_ACTION._serialized_start=1047
-  _CONNECTIONMESSAGE_ACTION._serialized_end=1084
-  _RESPONSEMESSAGE._serialized_start=1086
-  _RESPONSEMESSAGE._serialized_end=1121
-  _SECURITYMESSAGE._serialized_start=1124
-  _SECURITYMESSAGE._serialized_end=1371
-  _SECURITYMESSAGE_ACTION._serialized_start=1240
-  _SECURITYMESSAGE_ACTION._serialized_end=1371
+  _WRAPPER._serialized_end=434
+  _DISCOVERYMESSAGE._serialized_start=437
+  _DISCOVERYMESSAGE._serialized_end=595
+  _DISCOVERYMESSAGE_ACTION._serialized_start=543
+  _DISCOVERYMESSAGE_ACTION._serialized_end=595
+  _CONTROLMESSAGE._serialized_start=598
+  _CONTROLMESSAGE._serialized_end=752
+  _CONTROLMESSAGE_ACTION._serialized_start=676
+  _CONTROLMESSAGE_ACTION._serialized_end=752
+  _FEDERATIONMESSAGE._serialized_start=755
+  _FEDERATIONMESSAGE._serialized_end=960
+  _FEDERATIONMESSAGE_ACTION._serialized_start=860
+  _FEDERATIONMESSAGE_ACTION._serialized_end=960
+  _MODELMESSAGE._serialized_start=962
+  _MODELMESSAGE._serialized_end=1027
+  _CONNECTIONMESSAGE._serialized_start=1029
+  _CONNECTIONMESSAGE._serialized_end=1137
+  _CONNECTIONMESSAGE_ACTION._serialized_start=1100
+  _CONNECTIONMESSAGE_ACTION._serialized_end=1137
+  _RESPONSEMESSAGE._serialized_start=1139
+  _RESPONSEMESSAGE._serialized_end=1174
+  _SECURITYMESSAGE._serialized_start=1177
+  _SECURITYMESSAGE._serialized_end=1442
+  _SECURITYMESSAGE_ACTION._serialized_start=1311
+  _SECURITYMESSAGE_ACTION._serialized_end=1442
 # @@protoc_insertion_point(module_scope)
