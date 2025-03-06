@@ -162,7 +162,7 @@ class Propagator:
 
         # TODO-BMTD: neighbor selections - check this code to handle random federations
         # check if strategy_id is "initialization" we don't get randomized
-        if strategy_id != "initialization":
+        if self.engine.security["mtd"] and strategy_id != "initialization":
             randomize_federation_nodes = await self.engine.get_randomized_federation_nodes()
             logging.info(f"Randomized federation nodes: {randomize_federation_nodes}")
             eligible_neighbors = [

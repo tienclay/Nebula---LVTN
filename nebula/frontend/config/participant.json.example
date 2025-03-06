@@ -28,6 +28,8 @@
     "logging": false
   },
   "security_args": {
+    "encryption": false,
+    "mtd": false,
     "certfile": "",
     "keyfile": "",
     "cafile": ""

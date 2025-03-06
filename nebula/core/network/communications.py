@@ -345,7 +345,7 @@ class CommunicationsManager:
     async def deploy_network_engine(self):
         logging.info("🌐  Deploying Network engine...")
         try:
-            if self.engine.security:
+            if self.engine.security["encryption"]:
                 context = self.create_ssl_context()
                 self.network_engine = await asyncio.start_server(self.handle_connection_wrapper, self.host, self.port, ssl=context)
                 logging.info(f"🌐  Network engine deployed with TLS 1.3 secure connection")
@@ -778,7 +778,7 @@ class CommunicationsManager:
                     logging.info(f"🔗  [outgoing] Including {addr} in pending connections: {self.pending_connections}")
 
                 # BMTD: To test when security is on/off - use TLS 1.3 for secure connections
-                if self.engine.security:
+                if self.engine.security["encryption"]:
                     logging.info(f"🔗  [outgoing] Openning secure TLS connection with {host}:{port}:{dns}")
                     context = self.create_ssl_context(role="client")
                     reader, writer = await asyncio.open_connection(host, port, ssl=context, server_hostname=dns)

@@ -25,6 +25,12 @@ from nebula.config.config import Config
 from nebula.core.training.lightning import Lightning
 from nebula.core.utils.helper import cosine_metric
 
+# BMTD: type for security
+from typing import TypedDict
+class SecurityConfig(TypedDict):
+    encryption: bool
+    mtd: bool
+
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
@@ -63,7 +69,7 @@ class Engine:
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=False,
+        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
     ):
         self.config = config
         self.idx = config.participant["device_args"]["idx"]
@@ -371,9 +377,10 @@ class Engine:
 
     async def deploy_federation(self):
         # BMTD: make sure that before starting the federation, the communication manager has the number of current neighbors
-        async with self.cm.coin_flipping_lock:
-            await self.cm.initialize_security_neighbor_data()
-        logging.info("[neighbor-selection] 🪙 Security data initialized ")        
+        if self.security["mtd"]:
+            async with self.cm.coin_flipping_lock:
+                await self.cm.initialize_security_neighbor_data()
+            logging.info("[neighbor-selection] 🪙 Security data initialized ")        
         
         await self.federation_ready_lock.acquire_async()
         if self.config.participant["device_args"]["start"]:
@@ -506,8 +513,6 @@ class Engine:
                 title="Round information",
             )
             self.trainer.on_round_start()
-            # self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
-            # logging.info(f"Federation nodes: {self.federation_nodes}")
             
             direct_connections = await self.cm.get_addrs_current_connections(only_direct=True)
             undirected_connections = await self.cm.get_addrs_current_connections(only_undirected=True)
@@ -515,13 +520,15 @@ class Engine:
             logging.info(f"[Role {self.role}] Starting learning cycle...")
             
             # BMTD: implement coin-flipping protocol to choose federation nodes
-            logging.info(f"[neighbor-selection] 🪙 Start coin-flipping protocol")
-            await self.start_coin_flipping_protocol()
-            logging.info(f"[neighbor-selection] 🪙 Coin-flipping protocol finished")
-            
-            logging.info(f"Randomized federation nodes: {self.randomized_federation_nodes}")
-            self.federation_nodes = await self.get_randomized_federation_nodes(myself=True)
-            logging.info(f"Current connections: {self.federation_nodes}")
+            if self.security["mtd"]:
+                logging.info(f"[neighbor-selection] 🪙 Start coin-flipping protocol")
+                await self.start_coin_flipping_protocol()
+                logging.info(f"[neighbor-selection] 🪙 Coin-flipping protocol finished")
+                self.federation_nodes = await self.get_randomized_federation_nodes(myself=True)
+                logging.info(f"Federation nodes: {self.federation_nodes}")
+            else:
+                self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
+                logging.info(f"Federation nodes: {self.federation_nodes}")
             
             await self.aggregator.update_federation_nodes(self.federation_nodes)
             await self._extended_learning_cycle()
@@ -810,7 +817,7 @@ class MaliciousNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=False,
+        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -844,7 +851,7 @@ class AggregatorNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=False,
+        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -877,7 +884,7 @@ class ServerNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=False,
+        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -909,7 +916,7 @@ class TrainerNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=False,
+        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -946,7 +953,7 @@ class IdleNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=False,
+        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
     ):
         super().__init__(
             model,

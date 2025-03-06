@@ -73,6 +73,7 @@ class Scenario:
         additional_participants,
         schema_additional_participants,
         random_topology_probability,
+        security,
     ):
         """
         Initialize the scenario.
@@ -124,6 +125,7 @@ class Scenario:
             additional_participants (list): List of additional participants.
             schema_additional_participants (str): Schema for additional participants.
             random_topology_probability (float): Probability for random topology.
+            security (dict): Security parameters.
         """
         self.scenario_title = scenario_title
         self.scenario_description = scenario_description
@@ -169,6 +171,8 @@ class Scenario:
         self.additional_participants = additional_participants
         self.schema_additional_participants = schema_additional_participants
         self.random_topology_probability = random_topology_probability
+        # BMTD : add security parameters
+        self.security = security
 
     def attack_node_assign(
         self,
@@ -345,7 +349,7 @@ class ScenarioManagement:
                 participant_config = json.load(f)
 
             # BMTD : add DNS
-            participant_config["network_args"]["dns"] = f"participant-{node_config['id']}.nebula"
+            participant_config["network_args"]["dns"] = node_config["dns"]
             participant_config["network_args"]["ip"] = node_config["ip"]
             participant_config["network_args"]["port"] = int(node_config["port"])
             participant_config["device_args"]["idx"] = node_config["id"]
@@ -379,6 +383,10 @@ class ScenarioManagement:
             participant_config["mobility_args"]["scheme_mobility"] = self.scenario.scheme_mobility
             participant_config["mobility_args"]["round_frequency"] = self.scenario.round_frequency
             participant_config["reporter_args"]["report_status_data_queue"] = self.scenario.report_status_data_queue
+            
+            # BMTD: add security parameters
+            participant_config["security_args"]["encryption"] = self.scenario.security["encryption"]
+            participant_config["security_args"]["mtd"] = self.scenario.security["mtd"]
 
             with open(participant_file, "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)
