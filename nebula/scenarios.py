@@ -44,6 +44,7 @@ class Scenario:
         partition_parameter,
         model,
         agg_algorithm,
+        balance_params,
         rounds,
         logginglevel,
         report_status_data_queue,
@@ -94,6 +95,7 @@ class Scenario:
             partition_parameter (float): Parameter for partition selection.
             model (str): Model used.
             agg_algorithm (str): Aggregation algorithm.
+            balance_params (dict): Parameters for Balance aggregation.
             rounds (int): Number of rounds.
             logginglevel (str): Logging level.
             report_status_data_queue (bool): Indicator to report information about the nodes of the scenario
@@ -142,6 +144,7 @@ class Scenario:
         self.partition_parameter = partition_parameter
         self.model = model
         self.agg_algorithm = agg_algorithm
+        self.balance_params = balance_params
         self.rounds = rounds
         self.logginglevel = logginglevel
         self.report_status_data_queue = report_status_data_queue
@@ -368,6 +371,7 @@ class ScenarioManagement:
             participant_config["device_args"]["gpu_id"] = self.scenario.gpu_id
             participant_config["device_args"]["logging"] = self.scenario.logginglevel
             participant_config["aggregator_args"]["algorithm"] = self.scenario.agg_algorithm
+            participant_config["aggregator_args"]["balance_params"] = self.scenario.balance_params
             participant_config["adversarial_args"]["attacks"] = node_config["attacks"]
             participant_config["adversarial_args"]["attack_params"] = node_config["attack_params"]
             participant_config["defense_args"]["with_reputation"] = self.scenario.with_reputation
@@ -383,7 +387,7 @@ class ScenarioManagement:
             participant_config["mobility_args"]["scheme_mobility"] = self.scenario.scheme_mobility
             participant_config["mobility_args"]["round_frequency"] = self.scenario.round_frequency
             participant_config["reporter_args"]["report_status_data_queue"] = self.scenario.report_status_data_queue
-            
+
             # BMTD: add security parameters
             participant_config["security_args"]["encryption"] = self.scenario.security["encryption"]
             participant_config["security_args"]["mtd"] = self.scenario.security["mtd"]
