@@ -387,6 +387,7 @@ class ScenarioManagement:
             # BMTD: add security parameters
             participant_config["security_args"]["encryption"] = self.scenario.security["encryption"]
             participant_config["security_args"]["mtd"] = self.scenario.security["mtd"]
+            participant_config["security_args"]["acceptanceRandomProbability"] = self.scenario.security["acceptanceRandomProbability"]
 
             with open(participant_file, "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)

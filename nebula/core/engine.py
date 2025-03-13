@@ -30,6 +30,7 @@ from typing import TypedDict
 class SecurityConfig(TypedDict):
     encryption: bool
     mtd: bool
+    acceptanceRandomProbability: float
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -69,7 +70,7 @@ class Engine:
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
     ):
         self.config = config
         self.idx = config.participant["device_args"]["idx"]
@@ -521,7 +522,7 @@ class Engine:
             
             # BMTD: implement coin-flipping protocol to choose federation nodes
             if self.security["mtd"]:
-                logging.info(f"[neighbor-selection] 🪙 Start coin-flipping protocol")
+                logging.info(f"[neighbor-selection] 🪙 Start coin-flipping protocol with probability p = {self.cm.get_acceptance_probability()}")
                 await self.start_coin_flipping_protocol()
                 logging.info(f"[neighbor-selection] 🪙 Coin-flipping protocol finished")
                 self.federation_nodes = await self.get_randomized_federation_nodes(myself=True)
@@ -817,7 +818,7 @@ class MaliciousNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -851,7 +852,7 @@ class AggregatorNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -884,7 +885,7 @@ class ServerNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -916,7 +917,7 @@ class TrainerNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
     ):
         super().__init__(
             model,
@@ -953,7 +954,7 @@ class IdleNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
     ):
         super().__init__(
             model,

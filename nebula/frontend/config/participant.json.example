@@ -30,6 +30,7 @@
   "security_args": {
     "encryption": false,
     "mtd": false,
+    "acceptanceRandomProbability": 0.5,
     "certfile": "",
     "keyfile": "",
     "cafile": ""

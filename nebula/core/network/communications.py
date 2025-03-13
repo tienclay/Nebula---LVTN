@@ -118,8 +118,8 @@ class CommunicationsManager:
         # BMTD: add locker for coin-flipping protocol
         self.coin_flipping_lock = Locker(name="coin_flipping_lock", async_lock=True)
         self.neighbor_selection_lock = defaultdict(lambda: Locker(name="neighbor_selection_lock_" + str(len(self.neighbor_selection_lock)), async_lock=True))
-        # BMTD: coin-flipping fixed p value
-        self.p = 0.8
+        # BMTD: coin-flipping fixed acceptance probability value
+        self.p = self.engine.security["acceptanceRandomProbability"]
 
     @property
     def engine(self):
@@ -1053,7 +1053,7 @@ class CommunicationsManager:
     def sumModulo(a: float, b :float) -> float:
         return (a + b) % 1
     
-    def get_acceptance_threshold(self):
+    def get_acceptance_probability(self) -> float:
         return self.p
     
     async def verify_neighbor_selection_connection(self, peer):
@@ -1061,13 +1061,13 @@ class CommunicationsManager:
         mine_bit = self.neighbor_selection_data[peer]["self_commitment"]["bit"]
         verify_status = CommunicationsManager.sumModulo(peer_bit, mine_bit) 
         logging.info(f"[neighbor-selection]🔗 Verify status with {peer}: peer_bit = {peer_bit}, mine_bit = {mine_bit}, result = {verify_status}")
-        if verify_status < self.get_acceptance_threshold(): 
+        if verify_status < self.get_acceptance_probability(): 
             async with self.neighbor_selection_connections_lock:
                 self.neighbor_selection_connections.update({peer: self.connections[peer]})
             logging.info(f"[neighbor-selection] {len(self.neighbor_selection_connections)} neighbors are selected for exchanging model")
             logging.info(f"[neighbor-selection]🔗 Chossing neighbor {peer} for exchanging model")
-        
-    
+
+
     async def get_all_addrs_neighbor_selection_connections(self, only_direct=False, only_undirected=False):
         try:
             await self.neighbor_selection_connections_lock.acquire_async()
