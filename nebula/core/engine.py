@@ -794,12 +794,12 @@ class Engine:
             
         if verified:
             await self.cm.verify_neighbor_selection_connection(peer)
-            message = self.cm.create_message("security", "neighbor_selection_verify", 0 , b'', b'', True)
+            message = self.cm.create_message("security", "neighbor_selection_verify", 0.0 , b'', b'', True)
             await self.cm.send_message(peer, message)
             logging.info(f"[neighbor-selection] ✅ Verified NEIGHBOR_SELECTION_VERIFY from {peer}")
             return True
         else:
-            message = self.cm.create_message("security", "neighbor_selection_verify", 0 , b'', b'', False)
+            message = self.cm.create_message("security", "neighbor_selection_verify", 0.0 , b'', b'', False)
             await self.cm.send_message(peer, message)
             logging.info(f"[neighbor-selection] ❌ Malicious: {peer} did not send correct bit and nonce.")
             return False

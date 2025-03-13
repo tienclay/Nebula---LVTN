@@ -53,7 +53,7 @@ class MessagesManager:
             "security": {
                 "parameters": ["action", "bit", "nonce", "commitment", "verified"],
                 "defaults": {
-                    "bit": 0,
+                    "bit": 0.0,
                     "nonce": b"",
                     "commitment": b"",
                     "verified": False,
