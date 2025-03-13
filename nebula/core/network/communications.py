@@ -6,7 +6,8 @@ import subprocess
 import sys
 import traceback
 from datetime import datetime
-from typing import TYPE_CHECKING, TypedDict, Literal, Dict, cast
+from typing import TYPE_CHECKING, TypedDict, Dict
+import struct
 
 import requests
 
@@ -43,10 +44,10 @@ class CommitData(TypedDict):
     commitment: bytes
 class RevealData(TypedDict):
     status: bool
-    bit: Literal[0, 1]
+    bit: float
     nonce: bytes
 class SelfCommitmentData(TypedDict):
-    bit: Literal[0, 1]
+    bit: float
     nonce: bytes
     commitment: bytes
 class SecurityNeighborData(TypedDict):
@@ -117,6 +118,8 @@ class CommunicationsManager:
         # BMTD: add locker for coin-flipping protocol
         self.coin_flipping_lock = Locker(name="coin_flipping_lock", async_lock=True)
         self.neighbor_selection_lock = defaultdict(lambda: Locker(name="neighbor_selection_lock_" + str(len(self.neighbor_selection_lock)), async_lock=True))
+        # BMTD: coin-flipping fixed p value
+        self.p = 0.8
 
     @property
     def engine(self):
@@ -1037,19 +1040,28 @@ class CommunicationsManager:
     
     @staticmethod
     def hash_commitment(bit, nonce):
-        return hashlib.sha256(bit.to_bytes(1, byteorder="big") + nonce).digest()
+        if not isinstance(bit, float):
+            raise ValueError("bit must be a floating-point number")
+        if isinstance(nonce, str):
+            nonce = nonce.encode()  # Convert string nonce to bytes
+        
+        bit_bytes = struct.pack("!d", bit)  # Convert float to 8-byte IEEE 754 representation
+        return hashlib.sha256(bit_bytes + nonce).digest()
+
     
     @staticmethod
-    def xor(a: Literal[0,1], b: Literal[0,1]) -> Literal[0,1]:
-        return a ^ b 
+    def sumModulo(a: float, b :float) -> float:
+        return (a + b) % 1
+    
+    def get_acceptance_threshold(self):
+        return self.p
     
     async def verify_neighbor_selection_connection(self, peer):
         peer_bit = self.neighbor_selection_data[peer]["reveal_phase"]["bit"]
         mine_bit = self.neighbor_selection_data[peer]["self_commitment"]["bit"]
-        verify_status = CommunicationsManager.xor(peer_bit, mine_bit) 
+        verify_status = CommunicationsManager.sumModulo(peer_bit, mine_bit) 
         logging.info(f"[neighbor-selection]🔗 Verify status with {peer}: peer_bit = {peer_bit}, mine_bit = {mine_bit}, result = {verify_status}")
-        # BMTD: (1,0) and (0,1) -> connection is established else not
-        if verify_status == 1:
+        if verify_status < self.get_acceptance_threshold(): 
             async with self.neighbor_selection_connections_lock:
                 self.neighbor_selection_connections.update({peer: self.connections[peer]})
             logging.info(f"[neighbor-selection] {len(self.neighbor_selection_connections)} neighbors are selected for exchanging model")
@@ -1079,7 +1091,9 @@ class CommunicationsManager:
         return neighbor_selection_connections
     
     async def security_commit_phase(self, peer):
-        bit = cast(Literal[0,1],secrets.randbits(1))
+        # Generate a random 52-bit integer (since IEEE 754 double has 52 mantissa bits)
+        # Convert to a float in (0,1] using the IEEE 754 scale
+        bit = secrets.randbelow(2**52) / 2**52
         nonce = secrets.token_bytes(16)
         commitment = self.hash_commitment(bit, nonce)
         self.neighbor_selection_data[peer]["self_commitment"]["bit"] = bit
@@ -1099,6 +1113,9 @@ class CommunicationsManager:
         # Two phase checking, first check the same with self commitment to avoid replay attack
         if peer_bit == mine_bit and peer_nonce == mine_nonce and peer_commitment == mine_commitment:
             raise Exception("[neighbor-selection]❗️ Malicious: Peer is trying to do replay attack")
+        if 0 > peer_bit and peer_bit >= 1:
+            raise Exception("[neighbor-selection]❗️ Malicious: Peer is trying to make invalid bit")
         
         # Second phase checking, check the same with peer commitment
+        logging.info(f"[neighbor-selection]🔗 Verify status with {peer}: peer_bit = {peer_bit}, peer_nonce = {peer_nonce}, peer_commitment = {peer_commitment}")
         return CommunicationsManager.hash_commitment(peer_bit, peer_nonce) == peer_commitment
