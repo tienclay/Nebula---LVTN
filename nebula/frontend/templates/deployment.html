@@ -387,10 +387,17 @@
                     </div>
 
                     <h5 class="step-title">Acceptance Random Probability</h5>
-                    <div id="acceptanceRandomProbabilityBlock" class="form-check form-check-inline">
+                    <div id="acceptanceRandomProbabilityBlock" class="form-check form-check-inline" style="display: none;">
                         <input type="number" step="0.01" min="0" max="0.99" class="form-control" id="acceptanceRandomProbability" 
                             style="display: inline; width: 50%;" value="0.5">
                     </div>
+
+                    <script>
+                        document.getElementById('mtd-checkbox').addEventListener('change', function() {
+                            let probabilityBlock = document.getElementById('acceptanceRandomProbabilityBlock');
+                            probabilityBlock.style.display = this.checked ? 'inline-block' : 'none';
+                        });
+                    </script>
                 </div>
             </div>
             <div class="col-md-8">
