@@ -1,4 +1,5 @@
 import gc
+import logging
 
 import torch
 
@@ -19,6 +20,10 @@ class FedAvg(Aggregator):
         super().run_aggregation(models)
 
         models = list(models.values())
+
+        self.node_name = self.config.participant["network_args"]["addr"]
+
+        logging.info(f"Node {self.node_name} is running aggregation for round {self.engine.round}.")
 
         total_samples = float(sum(weight for _, weight in models))
 
