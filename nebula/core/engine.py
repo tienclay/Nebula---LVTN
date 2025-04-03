@@ -516,7 +516,11 @@ class Engine:
             local_model = self.trainer.get_model_parameters()
             logging.debug(f"Local model at the begining of round {self.round}: {local_model}")
             self.trainer.on_round_start()
-            
+
+            self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
+            logging.info("Clay is here")
+            logging.info(f"Federation nodes: {self.federation_nodes}")
+
             direct_connections = await self.cm.get_addrs_current_connections(only_direct=True)
             undirected_connections = await self.cm.get_addrs_current_connections(only_undirected=True)
             logging.info(f"Direct connections: {direct_connections} | Undirected connections: {undirected_connections}")

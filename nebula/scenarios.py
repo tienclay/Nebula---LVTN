@@ -290,6 +290,7 @@ class ScenarioManagement:
         os.makedirs(os.path.join(self.log_dir, self.scenario_name), exist_ok=True)
         os.makedirs(self.cert_dir, exist_ok=True)
 
+
         # Give permissions to the directories
         os.chmod(self.config_dir, 0o777)
         os.chmod(os.path.join(self.log_dir, self.scenario_name), 0o777)

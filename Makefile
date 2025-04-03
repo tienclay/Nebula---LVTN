@@ -70,14 +70,14 @@ update:				## Update docker images
 	@echo "🐳 Updating docker images..."
 	@echo "🐳 Building nebula-frontend docker image. Do you want to continue (overrides existing image)? (y/n)"
 	@read ans; if [ "$${ans:-N}" = y ]; then \
-		docker build -t nebula-frontend -f nebula/frontend/Dockerfile .; \
+		sudo docker build -t nebula-frontend -f nebula/frontend/Dockerfile .; \
 	else \
 		echo "Skipping nebula-frontend docker build."; \
 	fi
 	@echo ""
 	@echo "🐳 Building nebula-core docker image. Do you want to continue? (overrides existing image)? (y/n)"
 	@read ans; if [ "$${ans:-N}" = y ]; then \
-		docker build -t nebula-core .; \
+		sudo docker build -t nebula-core .; \
 	else \
 		echo "Skipping nebula-core docker build."; \
 	fi
