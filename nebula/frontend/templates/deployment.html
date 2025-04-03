@@ -99,6 +99,9 @@
                         <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
                             <input type="checkbox" id="mod-median" value="Median" style="margin-right: 10px; margin-left: 10px;">Median
                         </label>
+                        <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
+                            <input type="checkbox" id="mod-balance" value="Balance" style="margin-right: 10px; margin-left: 10px;">Balance
+                        </label>
                     </div>
                     <hr>
                     <h5>Topology <i class="fa fa-sitemap"></i>
@@ -131,9 +134,6 @@
                         </label>
                         <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
                             <input type="checkbox" id="mod-cifar10" value='CIFAR10' style="margin-right: 10px; margin-left: 10px;">CIFAR10
-                        </label>
-                        <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="mod-militarysar" value='MilitarySAR' style="margin-right: 10px; margin-left: 10px;">MilitarySAR
                         </label>
                     </div>
                     <hr>
@@ -375,7 +375,48 @@
                             <option>TrimmedMean</option>
                             <option>Median</option>
                             <option>BlockchainReputation</option>
+                            <option>Balance</option>
                         </select>
+                    </div>
+                    <div id="balance-parameter" style="display: none; padding: 0;">
+                        <h5 class="step-title" style="padding-left: 12px;">Gamma</h5>
+                        <div class="form-check form-check-inline">
+                            <input type="number" class="form-control" id="balanceGamma" placeholder="Enter parameter" value="1.5" style="width: 75%">
+                        </div>
+
+                        <h5 class="step-title" style="padding-left: 12px;">Kappa</h5>
+                        <div class="form-check form-check-inline">
+                            <input type="number" class="form-control" id="balanceKappa" placeholder="Enter parameter" value="1.0" style="width: 75%">
+                        </div>
+
+                        <h5 class="step-title" style="padding-left: 12px;">Alpha</h5>
+                        <div class="form-check form-check-inline">
+                            <input type="number" class="form-control" id="balanceAlpha" placeholder="Enter parameter" value="0.5" style="width: 75%">
+                        </div>
+                    </div>
+                    <script>
+                        document.getElementById("aggregationSelect").addEventListener("change", function() {
+                            var balanceParameterDiv = document.getElementById("balance-parameter");
+                            if (this.value === "Balance") {
+                                balanceParameterDiv.style.display = "block";
+                            } else {
+                                balanceParameterDiv.style.display = "none";
+                            }
+                        });
+                    </script>
+                </div>
+                <div class="form-group row container-shadow tiny grey" id="security-group">
+                    <h5 class="step-number">Security <i class="fa fa-cloud-upload"></i></h5>
+                    <h5 class="step-title">Security type</h5>
+
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="securityCheckboxOptions" id="encryption-checkbox" value="process">
+                        <label class="form-check-label" for="encryption-checkbox">Encryption</label>
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="securityCheckboxOptions" id="mtd-checkbox" value="docker">
+                        <label class="form-check-label" for="mtd-checkbox">MTD</label>
                     </div>
                 </div>
             </div>
@@ -640,6 +681,7 @@
                                     <option>FedAvg</option>
                                     <option>TrimmedMean</option>
                                     <option>Median</option>
+                                    <option>Balance</option>
                                 </select>
                             </div>
                         </div>
@@ -1016,7 +1058,6 @@
             "EMNIST": ["MLP", "CNN"],
             "CIFAR10": ["CNN", "CNNv2", "CNNv3", "ResNet9", "fastermobilenet", "simplemobilenet"],
             "CIFAR100": ["CNN"],
-            "KITSUN": ["MLP"],
         }
         var datasetSelect = document.getElementById("datasetSelect");
         var modelSelect = document.getElementById("modelSelect");
@@ -1051,6 +1092,7 @@
             var n_nodes = document.getElementById("info-participants-number").innerHTML;
             for (var i = 0; i < n_nodes; i++) {
                 nodes[i] = {
+                    "dns": "participant-" + i + ".nebula",
                     "id": i,
                     "ip": Graph.graphData().nodes[i].ip,
                     "port": Graph.graphData().nodes[i].port,
@@ -1100,6 +1142,17 @@
             data["model"] = document.getElementById("modelSelect").value
             // Step 7
             data["agg_algorithm"] = document.getElementById("aggregationSelect").value
+            // Get Balance parameters
+            if (data["agg_algorithm"] === "Balance") {
+                data["balance_params"] = {
+                    "gamma": document.getElementById("balanceGamma").value,
+                    "kappa": document.getElementById("balanceKappa").value,
+                    "alpha": document.getElementById("balanceAlpha").value
+                };
+            }
+            else {
+                data["balance_params"] = {};
+            }
             // Step 8
             data["rounds"] = document.getElementById("rounds").value
             data["logginglevel"] = document.getElementById("loggingLevel").value === "true"
@@ -1145,6 +1198,12 @@
             data["mobile_participants_percent"] = document.getElementById("mobileParticipantsPercent").value
             data["additional_participants"] = aditional_participants
             data["schema_additional_participants"] = document.getElementById("schemaAdditionalParticipantsSelect").value
+
+            // BMTD: add security parameters
+            data["security"] = {
+                "encryption": document.getElementById("encryption-checkbox").checked,
+                "mtd": document.getElementById("mtd-checkbox").checked,
+            }
             return data
         }
 
@@ -1212,6 +1271,11 @@
                 document.getElementById("modelSelect").value = data["model"];
                 // Step 7
                 document.getElementById("aggregationSelect").value = data["agg_algorithm"];
+                // Set Balance parameters
+                document.getElementById("balanceGamma").value = data["balance_params"] ? data["balance_params"]["gamma"] : 1.5;
+                document.getElementById("balanceKappa").value = data["balance_params"] ? data["balance_params"]["kappa"] : 1.0;
+                document.getElementById("balanceAlpha").value = data["balance_params"] ? data["balance_params"]["alpha"] : 0.5;
+
                 // Step 8
                 document.getElementById("rounds").value = data["rounds"];
                 document.getElementById("loggingLevel").value = data["logginglevel"] ? "true" : "false";
@@ -1287,6 +1351,11 @@
                         document.getElementById("roundsAdditionalParticipant" + i).value = data["additional_participants"][i]["round"];
                     }
                 }
+
+                // BMTD: set security parameters
+                document.getElementById("encryption-checkbox").checked = data["security"]["encryption"];
+                document.getElementById("mtd-checkbox").checked = data["security"]["mtd"];
+
             } catch (error) {
                 console.log(error);
             }
@@ -1385,7 +1454,6 @@
             '                    <li>MNIST: The MNIST dataset</li>\n' +
             '                    <li>FashionMNIST: The FashionMNIST dataset</li>\n' +
             '                    <li>CIFAR10: The CIFAR10 dataset</li>\n' +
-            '                    <li>SYSCALL: The SYSCALL dataset</li>\n' +
             '                </ul>'
 
         contentIIDHelp = '<ul>\n' +
@@ -2002,13 +2070,13 @@
 
         //Check all the options
         document.getElementById("mod-aggregation").addEventListener("change", function() {
-            selectALL(['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median'], document.getElementById("mod-aggregation").checked);
+            selectALL(['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median', 'mod-balance'], document.getElementById("mod-aggregation").checked);
         });
         document.getElementById("mod-topology").addEventListener("change", function() {
             selectALL(['mod-fully', 'mod-ring', 'mod-star'], document.getElementById("mod-topology").checked);
         });
         document.getElementById("mod-dataset").addEventListener("change", function() {
-            selectALL(['mod-mnist', 'mod-fmnist', 'mod-cifar10', 'mod-militarysar'], document.getElementById("mod-dataset").checked);
+            selectALL(['mod-mnist', 'mod-fmnist', 'mod-cifar10'], document.getElementById("mod-dataset").checked);
         });
         document.getElementById("mod-robustness").addEventListener("change", function() {
             selectALL(['mod-noattack', 'mod-labelflipping', 'mod-samplepoisoning', 'mod-modelpoisoning', 'mod-neuroninversion', 'mod-noiseinjection',
@@ -2018,7 +2086,7 @@
         //Generate a scenario
         function generateScenarios(){
             //One or more options selected in every case
-            var aggregation_methods = ['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median'];
+            var aggregation_methods = ['mod-fedavg', 'mod-krum', 'mod-trimmed', 'mod-median', 'mod-balance'];
             if (!atLeastOneChecked(aggregation_methods)) {
                 alert("Please, select one aggregation method at least.");
                 return;
@@ -2030,7 +2098,7 @@
                 return;
             }
 
-            var datasets = ['mod-mnist', 'mod-fmnist', 'mod-cifar10', 'mod-militarysar'];
+            var datasets = ['mod-mnist', 'mod-fmnist', 'mod-cifar10'];
             if (!atLeastOneChecked(datasets)) {
                 alert("Please, select one dataset at least.");
                 return;
@@ -2140,7 +2208,7 @@
     <script>
         // Send configuration to the server for deployment
 
-        // When click "run-btn" button, create a POST request to /nebula/dashboard/deployment/run with JSON data
+        // When click "run-btn" button, create a POST request to /platform/dashboard/deployment/run with JSON data
         document.getElementById("run-btn").addEventListener("click", function () {
 
             // Show the modal
@@ -2176,7 +2244,7 @@
                     document.querySelector(".overlay").style.display = "block";
                     document.getElementById("spinner").style.display = "block";
 
-                    fetch("/nebula/dashboard/deployment/run", {
+                    fetch("/platform/dashboard/deployment/run", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json'
@@ -2613,7 +2681,7 @@
             let textAreas = "";
             for (let i = 0; i < numberOfNodes; i++) {
                 textAreas += `<h4>Participant ${i}</h4>`;
-                let response = await fetch(`/nebula/dashboard/deployment/participant/file`);
+                let response = await fetch(`/platform/dashboard/deployment/participant/file`);
                 let json = await response.json();
                 textAreas += `<textarea class="form-control" rows="10" cols="50" style="width:100%;" name="participant${i}">${JSON.stringify(json, null, 4)}</textarea>`;
                 // textAreas += `<textarea class="form-control" rows="10" cols="50" name="scenario" id="scenario" style="width:100%;"></textarea>`;

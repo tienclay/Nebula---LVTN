@@ -15,7 +15,7 @@
     {% endif %}
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://federatedlearning.inf.um.es">
+    <meta property="og:url" content="https://nebula-dfl.com">
     <meta property="og:title" content="NEBULA: A Platform for Decentralized Federated Learning">
     <meta property="og:description"
         content="A cutting-edge platform designed to facilitate the training of federated models within both centralized and decentralized architectures">
@@ -23,7 +23,7 @@
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://federatedlearning.inf.um.es">
+    <meta property="twitter:url" content="https://nebula-dfl.com">
     <meta property="twitter:title" content="NEBULA: A Platform for Decentralized Federated Learning">
     <meta property="twitter:description"
         content="A cutting-edge platform designed to facilitate the training of federated models within both centralized and decentralized architectures">
@@ -97,7 +97,7 @@
         gtag('js', new Date());
         gtag('config', 'G-CJMRTGSHND', {
             'linker': {
-                'domains': ['federatedlearning.inf.um.es'],
+                'domains': ['federatedlearning.inf.um.es', 'nebula-dfl.com', 'nebula-dfl.eu']
             }
         });
     </script>
@@ -112,7 +112,7 @@
         var host = window.location.hostname;
         var port = window.location.port ? ':' + window.location.port : '';
         var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        var socket = new WebSocket(protocol + '//' + host + port + '/nebula/ws/' + client_id);
+        var socket = new WebSocket(protocol + '//' + host + port + '/platform/ws/' + client_id);
     </script>
 </head>
 
@@ -121,7 +121,7 @@
         <div class="container d-flex align-items-center justify-content-between">
 
             <h1 class="logo">
-                <a href="/nebula" style="white-space: nowrap;">
+                <a href="/platform" style="white-space: nowrap;">
                     <img src="{{ url_for('static', path='images/nebula-icon-white.svg') }}" alt="Nebula Icon"
                         style="height: 50px; margin-right: 5px;">
                     NEBULA
@@ -131,7 +131,7 @@
             <nav id="navbar" class="navbar">
                 <ul>
                     <li><a class="nav-link scrollto {% if request.path == '/' %}active{% endif %}"
-                            href="/nebula">Home</a>
+                            href="/platform">Home</a>
                     </li>
                     <li><a class="nav-link scrollto" href="https://github.com/CyberDataLab/nebula">Source Code</a>
                     </li>
@@ -143,13 +143,13 @@
                             <li><a class="nav-link scrollto" href="https://nebula.enriquetomasmb.com/developerguide">Developer Guide</a></li>
                         </ul>
                     </li>
-                    <li><a class="nav-link scrollto" href="https://federatedlearning.inf.um.es">Website</a></li>
+                    <li><a class="nav-link scrollto" href="https://nebula-dfl.com">Website</a></li>
                     {% if not request.session.get("user", None) %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarLoginDropdown">Login</a>
                         <ul>
                             <li>
-                                <form id="login-form" action="/nebula/login" method="post" class="px-4 py-3">
+                                <form id="login-form" action="/platform/login" method="post" class="px-4 py-3">
                                     <div class="mb-3">
                                         <label for="dropdownLoginFormUsername">Username</label>
                                         <input type="text" name="user" class="form-control"
@@ -226,7 +226,7 @@
 
                 const formData = new FormData(loginForm);
 
-                fetch("/nebula/login", {
+                fetch("/platform/login", {
                     method: "POST",
                     body: formData,
                 })
@@ -234,7 +234,7 @@
                         if (!response.ok) {
                             showAlert('danger', 'Invalid credentials');
                         } else {
-                            window.location.replace("/nebula");
+                            window.location.replace("/platform");
                         }
                     })
                     .catch((error) => {

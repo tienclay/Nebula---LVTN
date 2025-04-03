@@ -1,33 +1,8 @@
 [
   {
-    "scenario_title": "empty",
-    "scenario_description": "test",
-    "deployment": "docker",
-    "federation": "DFL",
-    "topology": "Fully",
-    "nodes": {
-      "0": {
-        "id": 0,
-        "ip": "192.168.50.2",
-        "port": "45001",
-        "role": "aggregator",
-        "malicious": false,
-        "proxy": false,
-        "start": true
-      },
-      "1": {
-        "id": 1,
-        "ip": "192.168.50.3",
-        "port": "45002",
-        "role": "aggregator",
-        "malicious": false,
-        "proxy": false,
-        "start": false
-      },
-      "2": {
-        "id": 2,
-        "ip": "192.168.50.4",
+
         "port": "45003",
+
         "role": "aggregator",
         "malicious": false,
         "proxy": false,
@@ -346,7 +321,9 @@
     "rounds": "5",
     "logginglevel": true,
     "report_status_data_queue": true,
+
     "accelerator": "cpu",
+
     "network_subnet": "192.168.50.0/24",
     "network_gateway": "192.168.50.1",
     "epochs": "1",
@@ -368,6 +345,10 @@
       "round_stop_attack": "10"
     },
     "with_reputation": false,
+    "attack_params": {
+      "poisoned_percent": "0",
+      "poisoned_ratio": "0"
+    },
     "is_dynamic_topology": false,
     "is_dynamic_aggregation": false,
     "target_aggregation": false,
@@ -382,6 +363,7 @@
     "mobile_participants_percent": "100",
     "additional_participants": [],
     "schema_additional_participants": "random",
+
     "gpu_id": []
   }
 ]

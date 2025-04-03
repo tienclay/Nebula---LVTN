@@ -11,6 +11,7 @@ class AggregatorException(Exception):
 
 
 def create_aggregator(config, engine):
+    from nebula.core.aggregation.balance import Balance
     from nebula.core.aggregation.blockchainReputation import BlockchainReputation
     from nebula.core.aggregation.fedavg import FedAvg
     from nebula.core.aggregation.krum import Krum
@@ -23,6 +24,7 @@ def create_aggregator(config, engine):
         "Median": Median,
         "TrimmedMean": TrimmedMean,
         "BlockchainReputation": BlockchainReputation,
+        "Balance": Balance,
     }
     algorithm = config.participant["aggregator_args"]["algorithm"]
     aggregator = ALGORITHM_MAP.get(algorithm)
@@ -33,6 +35,7 @@ def create_aggregator(config, engine):
 
 
 def create_target_aggregator(config, engine):
+    from nebula.core.aggregation.balance import Balance
     from nebula.core.aggregation.fedavg import FedAvg
     from nebula.core.aggregation.krum import Krum
     from nebula.core.aggregation.median import Median
@@ -43,6 +46,7 @@ def create_target_aggregator(config, engine):
         "Krum": Krum,
         "Median": Median,
         "TrimmedMean": TrimmedMean,
+        "Balance": Balance,
     }
     algorithm = config.participant["defense_args"]["target_aggregation"]
     aggregator = ALGORITHM_MAP.get(algorithm)
@@ -233,6 +237,10 @@ class Aggregator(ABC):
             logging.info(f"🔄  get_aggregation | Aggregation incomplete, missing models from: {missing_nodes}")
         else:
             logging.info("🔄  get_aggregation | All models accounted for, proceeding with aggregation.")
+            logging.info(
+                f"🔄  get_aggregation | Models to aggregate: {self._pending_models_to_aggregate.keys()}"
+                f" | Federation nodes: {self._federation_nodes}"
+            )
 
         aggregated_result = self.run_aggregation(self._pending_models_to_aggregate)
         self._pending_models_to_aggregate.clear()

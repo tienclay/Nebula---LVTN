@@ -16,6 +16,11 @@ import tensorboard_reducer as tbr
 from nebula.addons.blockchain.blockchain_deployer import BlockchainDeployer
 from nebula.addons.topologymanager import TopologyManager
 from nebula.config.config import Config
+from nebula.core.datasets.cifar10.cifar10 import CIFAR10Dataset
+from nebula.core.datasets.cifar100.cifar100 import CIFAR100Dataset
+from nebula.core.datasets.emnist.emnist import EMNISTDataset
+from nebula.core.datasets.fashionmnist.fashionmnist import FashionMNISTDataset
+from nebula.core.datasets.mnist.mnist import MNISTDataset
 from nebula.core.utils.certificate import generate_ca_certificate, generate_certificate
 from nebula.utils import DockerUtils, FileUtils
 
@@ -39,6 +44,7 @@ class Scenario:
         partition_parameter,
         model,
         agg_algorithm,
+        balance_params,
         rounds,
         logginglevel,
         report_status_data_queue,
@@ -68,6 +74,7 @@ class Scenario:
         additional_participants,
         schema_additional_participants,
         random_topology_probability,
+        security,
     ):
         """
         Initialize the scenario.
@@ -88,6 +95,7 @@ class Scenario:
             partition_parameter (float): Parameter for partition selection.
             model (str): Model used.
             agg_algorithm (str): Aggregation algorithm.
+            balance_params (dict): Parameters for Balance aggregation.
             rounds (int): Number of rounds.
             logginglevel (str): Logging level.
             report_status_data_queue (bool): Indicator to report information about the nodes of the scenario
@@ -119,6 +127,7 @@ class Scenario:
             additional_participants (list): List of additional participants.
             schema_additional_participants (str): Schema for additional participants.
             random_topology_probability (float): Probability for random topology.
+            security (dict): Security parameters.
         """
         self.scenario_title = scenario_title
         self.scenario_description = scenario_description
@@ -135,6 +144,7 @@ class Scenario:
         self.partition_parameter = partition_parameter
         self.model = model
         self.agg_algorithm = agg_algorithm
+        self.balance_params = balance_params
         self.rounds = rounds
         self.logginglevel = logginglevel
         self.report_status_data_queue = report_status_data_queue
@@ -164,6 +174,8 @@ class Scenario:
         self.additional_participants = additional_participants
         self.schema_additional_participants = schema_additional_participants
         self.random_topology_probability = random_topology_probability
+        # BMTD : add security parameters
+        self.security = security
 
     def attack_node_assign(
         self,
@@ -340,6 +352,8 @@ class ScenarioManagement:
             with open(participant_file) as f:
                 participant_config = json.load(f)
 
+            # BMTD : add DNS
+            participant_config["network_args"]["dns"] = node_config["dns"]
             participant_config["network_args"]["ip"] = node_config["ip"]
             participant_config["network_args"]["port"] = int(node_config["port"])
             participant_config["device_args"]["idx"] = node_config["id"]
@@ -358,6 +372,7 @@ class ScenarioManagement:
             participant_config["device_args"]["gpu_id"] = self.scenario.gpu_id
             participant_config["device_args"]["logging"] = self.scenario.logginglevel
             participant_config["aggregator_args"]["algorithm"] = self.scenario.agg_algorithm
+            participant_config["aggregator_args"]["balance_params"] = self.scenario.balance_params
             participant_config["adversarial_args"]["attacks"] = node_config["attacks"]
             participant_config["adversarial_args"]["attack_params"] = node_config["attack_params"]
             participant_config["defense_args"]["with_reputation"] = self.scenario.with_reputation
@@ -373,6 +388,10 @@ class ScenarioManagement:
             participant_config["mobility_args"]["scheme_mobility"] = self.scenario.scheme_mobility
             participant_config["mobility_args"]["round_frequency"] = self.scenario.round_frequency
             participant_config["reporter_args"]["report_status_data_queue"] = self.scenario.report_status_data_queue
+
+            # BMTD: add security parameters
+            participant_config["security_args"]["encryption"] = self.scenario.security["encryption"]
+            participant_config["security_args"]["mtd"] = self.scenario.security["mtd"]
 
             with open(participant_file, "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)
@@ -492,6 +511,7 @@ class ScenarioManagement:
                 dir_path=self.cert_dir,
                 node_id=f"participant_{i}",
                 ip=participant_config["network_args"]["ip"],
+                idx=participant_config["device_args"]["idx"],
             )
 
             participant_config["security_args"]["certfile"] = certificate_path
@@ -556,6 +576,66 @@ class ScenarioManagement:
 
         if additional_participants_files:
             self.config.add_participants_config(additional_participants_files)
+
+        # Splitting dataset
+        dataset_name = self.scenario.dataset
+        dataset = None
+        if dataset_name == "MNIST":
+            dataset = MNISTDataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "FashionMNIST":
+            dataset = FashionMNISTDataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "EMNIST":
+            dataset = EMNISTDataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "CIFAR10":
+            dataset = CIFAR10Dataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "CIFAR100":
+            dataset = CIFAR100Dataset(
+                num_classes=100,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        else:
+            raise ValueError(f"Dataset {dataset_name} not supported")
+
+        logging.info(f"Splitting {dataset_name} dataset...")
+        dataset.initialize_dataset()
+        logging.info(f"Splitting {dataset_name} dataset... Done")
 
         if self.scenario.deployment in ["docker", "process"]:
             if self.use_blockchain:
