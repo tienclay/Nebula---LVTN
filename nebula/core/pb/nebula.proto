@@ -89,7 +89,7 @@ message SecurityMessage {
     NEIGHBOR_SELECTION_VERIFY = 3;
   }
   Action action = 1;
-  int32 bit = 2;
+  double bit = 2;
   bytes nonce = 3;
   bytes commitment = 4;
   bool verified = 5;

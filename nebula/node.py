@@ -195,7 +195,8 @@ async def main(config):
     # BMTD: security_config
     encryption = config.participant["security_args"]["encryption"]
     mtd = config.participant["security_args"]["mtd"]
-    security_config = SecurityConfig(encryption=encryption, mtd=mtd)
+    acceptanceRandomProbability = float(config.participant["security_args"]["acceptanceRandomProbability"])
+    security_config = SecurityConfig(encryption=encryption, mtd=mtd, acceptanceRandomProbability=acceptanceRandomProbability)
 
     node = node_cls(
         model=model,
