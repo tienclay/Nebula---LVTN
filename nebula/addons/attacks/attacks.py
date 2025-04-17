@@ -118,6 +118,7 @@ def create_attack(engine) -> Attack:
     from nebula.addons.attacks.model.noiseinjection import NoiseInjectionAttack
     from nebula.addons.attacks.model.swappingweights import SwappingWeightsAttack
     from nebula.addons.attacks.model.trimmedmeanattack import TrimmedMeanAttack
+    from nebula.addons.attacks.model.medianattack import MedianAttack
     ATTACK_MAP = {
         "GLL Neuron Inversion": GLLNeuronInversionAttack,
         "Noise Injection": NoiseInjectionAttack,
@@ -127,6 +128,7 @@ def create_attack(engine) -> Attack:
         "Sample Poisoning": SamplePoisoningAttack,
         "Model Poisoning": ModelPoisonAttack,
         "Trimmed Mean": TrimmedMeanAttack,
+        "Median": MedianAttack,
     }
 
     # Get attack name and parameters from the engine configuration
