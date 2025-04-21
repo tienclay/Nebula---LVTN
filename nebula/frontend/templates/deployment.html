@@ -157,6 +157,9 @@
                             <label>
                                 <input type="checkbox" id="mod-trimmedmean" value='Trimmed Mean' style="margin-right: 10px;">Trimmed Mean
                             </label>
+                            <label>
+                                <input type="checkbox" id="mod-median" value='Median' style="margin-right: 10px;">Median
+                            </label>
                         </div>
                         <div class="col-md-7" style="right: inherit;">
                             <label>
@@ -565,6 +568,7 @@
                             <option>Swapping Weights</option>
                             <option>Delayer</option>
                             <option>Trimmed Mean</option>
+                            <option>Median</option>
                             
                         </select>
                         <h5 id="poisoned-node-title" class="step-title" style="margin-left: 11px; display: none;">% Malicious nodes</h5>
@@ -2857,6 +2861,30 @@
                 document.getElementById("stop-attack-container").style.display = "block";
             }
             else if(this.value == "Trimmed Mean"){
+                document.getElementById("poisoned-node-title").style.display = "block";
+                document.getElementById("poisoned-node-percent-container").style.display = "block";
+                document.getElementById("poisoned-sample-title").style.display = "none";
+                document.getElementById("poisoned-sample-percent-container").style.display = "none";
+                document.getElementById("poisoned-noise-title").style.display = "none";
+                document.getElementById("poisoned-noise-percent-container").style.display = "none";
+                document.getElementById("noise-type-title").style.display = "none";
+                document.getElementById("noise-type-container").style.display = "none";
+                document.getElementById("targeted").checked = false;
+                document.getElementById("targeted").dispatchEvent(new Event('change'));
+                document.getElementById("targeted-title").style.display = "none";
+                document.getElementById("targeted-container").style.display = "none";
+                document.getElementById("strength-title").style.display = "block";
+                document.getElementById("strength-container").style.display = "block";
+                document.getElementById("layer_idx-title").style.display = "none";
+                document.getElementById("layer_idx-container").style.display = "none";
+                document.getElementById("delay-title").style.display = "none";
+                document.getElementById("delay-container").style.display = "none";
+                document.getElementById("start-attack-title").style.display = "block";
+                document.getElementById("start-attack-container").style.display = "block";
+                document.getElementById("stop-attack-title").style.display = "block";
+                document.getElementById("stop-attack-container").style.display = "block";
+            }
+            else if(this.value == "Median"){
                 document.getElementById("poisoned-node-title").style.display = "block";
                 document.getElementById("poisoned-node-percent-container").style.display = "block";
                 document.getElementById("poisoned-sample-title").style.display = "none";

@@ -1,181 +1,136 @@
 import logging
 from collections import OrderedDict
 
-import torch
 import numpy as np
-from typing import Dict, List, Optional, Tuple
-
+import torch
 from nebula.addons.attacks.model.modelattack import ModelAttack
 
 
 class TrimmedMeanAttack(ModelAttack):
     """
-    Implements a Trimmed Mean Attack by manipulating model parameters to bypass
-    trimmed mean defense mechanisms.
-    
-    The attack works by estimating benign parameter distributions and carefully
-    positioning malicious updates outside normal ranges while avoiding detection.
-
-    Args:
-        engine (object): The engine object that manages the aggregator.
-        attack_params (dict): Parameters for the attack, including:
-            - std_factor (float): Factor for standard deviation to determine attack range.
-            - round_start_attack (int): Round to start the attack.
-            - round_stop_attack (int): Round to stop the attack.
+    Partial‑knowledge trimmed‑mean attack (USENIX 2020, §3.4).
+    Attacker chỉ biết lịch sử các mô hình đã chính mình gửi, 
+    ước lượng hướng thay đổi và biên μ ± k·σ để đẩy tham số
+    ra ngoài phạm vi benign.
     """
 
     def __init__(self, engine, attack_params):
-        """
-        Initializes the TrimmedMeanAttack with the specified engine and parameters.
-
-        Args:
-            engine (object): The training engine object.
-            attack_params (dict): Dictionary of attack parameters.
-        """
         super().__init__(engine)
-        self.std_factor = float(attack_params.get("std_factor", 3.5))
-        self.round_start_attack = int(attack_params.get("round_start_attack", 0))
-        self.round_stop_attack = int(attack_params.get("round_stop_attack", 10))
-        self.rng = np.random.RandomState(attack_params.get("random_seed"))
-        
-        # Store model history to estimate benign parameter distributions
-        self.model_history = []
-        self.history_size = 3  # Number of rounds to keep in history
-        
-    def estimate_direction(self, model_params: OrderedDict) -> Dict[str, torch.Tensor]:
-        """
-        Estimate the attack direction for each parameter based on current model values.
-        
-        Args:
-            model_params: Current model parameters
 
-        Returns:
-            Dictionary of direction tensors (-1 or 1) for each parameter
-        """
-        directions = {}
-        for name, param in model_params.items():
-            # Direction is opposite of parameter sign to maximize attack impact
-            directions[name] = -torch.sign(param)
-        return directions
-    
-    def calculate_statistics(self) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
-        """
-        Calculate mean and standard deviation of parameters using model history.
-        
-        Returns:
-            Tuple of (means, standard deviations) for each parameter
-        """
-        if not self.model_history:
-            return {}, {}
-            
-        means = {}
-        stds = {}
-        
-        # Get list of parameter names from first model in history
-        param_names = self.model_history[0].keys()
-        
-        for name in param_names:
-            # Stack corresponding parameters from all models in history
-            try:
-                stacked = torch.stack([model[name] for model in self.model_history])
-                means[name] = torch.mean(stacked, dim=0)
-                stds[name] = torch.std(stacked, dim=0) + 1e-8  # Prevent division by zero
-            except Exception as e:
-                logging.warning(f"Error calculating statistics for {name}: {e}")
-                # Provide fallback values
-                means[name] = torch.zeros_like(self.model_history[0][name])
-                stds[name] = torch.ones_like(self.model_history[0][name])
-                
-        return means, stds
-    
-    def update_model_history(self, model_params: OrderedDict):
-        """
-        Update the history of observed models.
-        
-        Args:
-            model_params: Current model parameters
-        """
-        # Make a deep copy of the model parameters
-        model_copy = OrderedDict()
-        for name, param in model_params.items():
-            model_copy[name] = param.clone().detach()
-            
-        # Add to history and keep only the most recent entries
-        self.model_history.append(model_copy)
+        # --- các tham số cấu hình ---
+        self.round_start_attack = int(attack_params.get("round_start_attack", 1))
+        self.round_stop_attack  = int(attack_params.get("round_stop_attack", 10 ** 9))
+        self.default_sigma      = float(attack_params.get("default_sigma", 0.2))
+        self.history_size       = int(attack_params.get("history_size", 20))
+
+        self.rng = np.random.RandomState(attack_params.get("random_seed", 42))
+        self.model_history: list[OrderedDict[str, torch.Tensor]] = []
+
+        self.current_round = 0   # sẽ tăng ở mỗi lần gọi attack
+
+    # ------------------------------------------------------------------ #
+    #                       Công cụ tiện ích nội bộ                      #
+    # ------------------------------------------------------------------ #
+
+    def _add_to_history(self, weights: OrderedDict) -> None:
+        """Lưu một bản sao models vào history (cắt còn history_size)."""
+        copied = OrderedDict((k, v.clone().detach()) for k, v in weights.items())
+        self.model_history.append(copied)
         if len(self.model_history) > self.history_size:
             self.model_history.pop(0)
-    
-    def generate_attack_values(self, model_params: OrderedDict) -> OrderedDict:
+
+    def _stats(self) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         """
-        Generate manipulated parameter values for the attack.
-        
-        Args:
-            model_params: Current model parameters
-            
-        Returns:
-            OrderedDict of attack parameter values
+        Trả về (means, stds) của mỗi tham số, tính trên history.
+        Nếu history < 2 vòng, trả về 2 dict rỗng.
         """
-        # Update history and calculate statistics
-        self.update_model_history(model_params)
-        means, stds = self.calculate_statistics()
-        
-        if not means:  # If we don't have statistics yet
-            return model_params
-            
-        # Estimate directions
-        directions = self.estimate_direction(model_params)
-        
-        # Generate attack values
+        if len(self.model_history) < 2:
+            return {}, {}
+
+        means, stds = {}, {}
+        for k in self.model_history[0]:
+            stacked = torch.stack([m[k] for m in self.model_history])
+            mu      = stacked.mean(0)
+            sigma   = stacked.std(0).clamp_min(1e-6)
+            sigma   = torch.where(sigma < 1e-6,
+                                  torch.full_like(sigma, self.default_sigma),
+                                  sigma)
+            means[k], stds[k] = mu, sigma
+        return means, stds
+
+    def _direction(self) -> dict[str, torch.Tensor]:
+        """
+        Ước lượng hướng thay đổi s_j = sign(w_t - w_{t-1})
+        Trả về dict {param_name: tensor direction (‑1/0/+1)}.
+        Nếu history < 2 vòng, trả về dict rỗng.
+        """
+        if len(self.model_history) < 2:
+            return {}
+        prev, curr = self.model_history[-2], self.model_history[-1]
+        return {k: torch.sign(curr[k] - prev[k]) for k in curr}
+
+    # ------------------------------------------------------------------ #
+    #                               Attack                               #
+    # ------------------------------------------------------------------ #
+
+    def generate_attack_model(self, local_weights: OrderedDict) -> OrderedDict:
+        """Sinh weights đã bị poison dựa trên thuật toán trimmed‑mean."""
+        # cập nhật vòng
+        self.current_round += 1
+
+        # nếu chưa tới vòng tấn công thì pass‑through
+        if not (self.round_start_attack <= self.current_round <= self.round_stop_attack):
+            return local_weights
+
+        # thêm mô hình hiện tại vào history
+        self._add_to_history(local_weights)
+
+        # cần ít nhất 2 snapshot để tính hướng
+        means, stds = self._stats()
+        if not means:
+            return local_weights
+
+        directions = self._direction()
         attack_model = OrderedDict()
-        for name, param in model_params.items():
+
+        for name, param in local_weights.items():
+            # bảo đảm param nằm trong means/stds/directions
             if name not in means or name not in stds or name not in directions:
-                attack_model[name] = param  # Keep original if missing stats
+                attack_model[name] = param
                 continue
-                
-            direction = directions[name]
-            mean = means[name]
-            std = stds[name] * self.std_factor
-            
-            # Initialize attack values tensor
-            attack_values = torch.zeros_like(mean)
-            
-            # Generate mask for parameters to increase (direction = -1)
-            mask_increase = (direction == -1)
-            # Generate mask for parameters to decrease (direction = 1)
-            mask_decrease = (direction == 1)
-            
-            # When direction is -1, choose random values between μ+3σ and μ+4σ
-            if mask_increase.any():
-                lower_bound = mean + 3 * std
-                upper_bound = mean + 4 * std
-                random_factor = torch.rand_like(mean)
-                values = lower_bound + random_factor * (upper_bound - lower_bound)
-                attack_values[mask_increase] = values[mask_increase]
-            
-            # When direction is 1, choose random values between μ-4σ and μ-3σ
-            if mask_decrease.any():
-                lower_bound = mean - 4 * std
-                upper_bound = mean - 3 * std
-                random_factor = torch.rand_like(mean)
-                values = lower_bound + random_factor * (upper_bound - lower_bound)
-                attack_values[mask_decrease] = values[mask_decrease]
-            
-            attack_model[name] = attack_values
-            
+
+            mu, sigma   = means[name], stds[name]
+            direction   = directions[name]
+            rand_tensor = torch.rand_like(param)
+
+            # dải lấy mẫu
+            upper_high  = mu + 4 * sigma   # μ + 4σ
+            upper_low   = mu + 3 * sigma   # μ + 3σ
+            lower_high  = mu - 3 * sigma   # μ - 3σ
+            lower_low   = mu - 4 * sigma   # μ - 4σ
+
+            atk         = torch.empty_like(param)
+
+            mask_up   = direction == -1   # tham số đang giảm ⇒ đẩy lên cao
+            mask_down = direction ==  1   # tham số đang tăng ⇒ đẩy xuống thấp
+
+            # Uniform sample trên từng đoạn
+            atk[mask_up]   = upper_low[mask_up]   + rand_tensor[mask_up] * (upper_high[mask_up]  - upper_low[mask_up])
+            atk[mask_down] = lower_low[mask_down] + rand_tensor[mask_down] * (lower_high[mask_down] - lower_low[mask_down])
+
+            # giữ nguyên nếu direction == 0
+            zero_mask = ~(mask_up | mask_down)
+            atk[zero_mask] = param[zero_mask]
+
+            attack_model[name] = atk
+
         return attack_model
-    
-    def model_attack(self, received_weights):
-        """
-        Applies the trimmed mean attack by modifying the received model weights.
 
-        Args:
-            received_weights (OrderedDict): The aggregated model weights to be modified.
-
-        Returns:
-            OrderedDict: The modified model weights after applying the attack.
-        """
-        logging.info("[TrimmedMeanAttack] Performing trimmed mean attack")
-        
-        # Generate and return the attack model
-        attack_weights = self.generate_attack_values(received_weights)
-        return attack_weights
+    # hàm chính được framework gọi
+    def model_attack(self, received_weights: OrderedDict) -> OrderedDict:
+        try:
+            logging.info("[TrimmedMeanAttack] running partial‑knowledge trimmed‑mean attack")
+            return self.generate_attack_model(received_weights)
+        except Exception:
+            logging.exception("[TrimmedMeanAttack] failed, return original weights")
+            return received_weights
