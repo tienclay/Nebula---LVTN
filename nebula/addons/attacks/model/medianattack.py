@@ -1,110 +1,130 @@
 import logging
 from collections import OrderedDict
-from typing import Dict, Tuple
 
-import torch
 import numpy as np
-
+import torch
 from nebula.addons.attacks.model.modelattack import ModelAttack
 
 
 class MedianAttack(ModelAttack):
+    """
+    Partial‑knowledge median attack dựa trên §3.4 “Attacking Median”.
+    Attacker dùng history bản thân để ước lượng wmax,j ≈ μ + k·σ
+    và wmin,j ≈ μ - k·σ, rồi sample:
+      - nếu s_j = –1: [wmax,j, b·wmax,j]
+      - nếu s_j = +1: [b·wmin,j, wmin,j]
+    """
+
     def __init__(self, engine, attack_params):
         super().__init__(engine)
-        self.round_start_attack = int(attack_params.get("round_start_attack", 0))
-        self.round_stop_attack = int(attack_params.get("round_stop_attack", 10))
-        self.default_sigma = float(attack_params.get("default_sigma", 0.1))
-        self.history_size = int(attack_params.get("history_size", 3))
-        self.b = float(attack_params.get("b", 2.0))  # median attack parameter
-        self.rng = np.random.RandomState(attack_params.get("random_seed", 42))
-        self.model_history = []
+        # --- cấu hình chung ---
+        self.round_start_attack = int(attack_params.get("round_start_attack", 1))
+        self.round_stop_attack  = int(attack_params.get("round_stop_attack", 10**9))
+        self.default_sigma      = float(attack_params.get("default_sigma", 0.2))
+        self.history_size       = int(attack_params.get("history_size", 20))
+        self.k1           = float(attack_params.get("median_k", 3.0))
+        self.k2                  = float(attack_params.get("b_factor", 4.0))  
 
-    def update_model_history(self, model_params: OrderedDict):
-        model_copy = OrderedDict()
-        for name, param in model_params.items():
-            try:
-                model_copy[name] = param.clone().detach()
-            except Exception as e:
-                logging.warning(f"[MedianAttack] Failed to clone param {name}: {e}")
-        self.model_history.append(model_copy)
+        self.rng = np.random.RandomState(attack_params.get("random_seed", 42))
+        self.model_history: list[OrderedDict[str, torch.Tensor]] = []
+        self.current_round = 0
+
+    # ------------------ tiện ích nội bộ ------------------
+
+    def _add_to_history(self, weights: OrderedDict) -> None:
+        snapped = OrderedDict((k, v.clone().detach()) for k, v in weights.items())
+        self.model_history.append(snapped)
         if len(self.model_history) > self.history_size:
             self.model_history.pop(0)
 
-    def calculate_statistics(self) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
-        if len(self.model_history) < self.history_size:
+    def _stats(self) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
+        """
+        Tính μj, σj trên lịch sử.
+        Trả về ({name: μ}, {name: σ}), hoặc ({}, {}) nếu chưa đủ 2 vòng.
+        """
+        if len(self.model_history) < 2:
             return {}, {}
-
         means, stds = {}, {}
-        param_names = self.model_history[0].keys()
-        for name in param_names:
-            try:
-                stacked = torch.stack([model[name] for model in self.model_history if name in model])
-                means[name] = stacked.mean(dim=0)
-                stds[name] = stacked.std(dim=0) + 1e-8
-            except Exception as e:
-                logging.warning(f"[MedianAttack] Error in stats for {name}: {e}")
-                fallback = self.model_history[0].get(name, torch.tensor(0.))
-                means[name] = torch.zeros_like(fallback)
-                stds[name] = torch.full_like(fallback, self.default_sigma)
+        for name in self.model_history[0]:
+            stack = torch.stack([m[name] for m in self.model_history])
+            mu    = stack.mean(0)
+            sigma = stack.std(0).clamp_min(1e-6)
+            # phòng trường hợp sigma quá nhỏ
+            sigma = torch.where(sigma < 1e-6,
+                                torch.full_like(sigma, self.default_sigma),
+                                sigma)
+            means[name], stds[name] = mu, sigma
         return means, stds
 
-    def estimate_direction(self, model_params: OrderedDict) -> Dict[str, torch.Tensor]:
-        directions = {}
-        for name, param in model_params.items():
-            try:
-                directions[name] = -torch.sign(param)
-            except Exception as e:
-                logging.warning(f"[MedianAttack] Error estimating direction for {name}: {e}")
-        return directions
+    def _direction(self) -> dict[str, torch.Tensor]:
+        """
+        Ước lượng s_j = sign(w_t - w_{t-1}) cho mỗi tham số.
+        """
+        if len(self.model_history) < 2:
+            return {}
+        prev, curr = self.model_history[-2], self.model_history[-1]
+        return {k: torch.sign(curr[k] - prev[k]) for k in curr}
 
-    def generate_attack_model(self, model_params: OrderedDict) -> OrderedDict:
-        self.update_model_history(model_params)
-        means, stds = self.calculate_statistics()
+    # ---------------------- attack -----------------------
+
+    def generate_attack_model(self, local_weights: OrderedDict) -> OrderedDict:
+        """Sinh cọng weights attack dựa trên median‑attack."""
+        self.current_round += 1
+
+        # nếu chưa tới vòng tấn công → trả về nguyên bản
+        if not (self.round_start_attack <= self.current_round <= self.round_stop_attack):
+            return local_weights
+
+        # thêm vào history
+        self._add_to_history(local_weights)
+
+        # tính μ, σ
+        means, stds = self._stats()
         if not means:
-            logging.info("[MedianAttack] Not enough history to perform attack. Returning original weights.")
-            return model_params
+            return local_weights
 
-        directions = self.estimate_direction(model_params)
-        attack_model = OrderedDict()
+        # tính hướng thay đổi
+        directions = self._direction()
+        crafted = OrderedDict()
 
-        for name, param in model_params.items():
-            try:
-                if name not in means or name not in stds or name not in directions:
-                    attack_model[name] = param
-                    continue
+        for name, w in local_weights.items():
+            # chỉ craft khi đủ μ, σ, s
+            if name not in means or name not in stds or name not in directions:
+                crafted[name] = w
+                continue
 
-                mu, sigma = means[name], stds[name]
-                sigma[sigma < 1e-6] = self.default_sigma
-                direction = directions[name]
-                rand_tensor = torch.rand_like(param)
+            mu    = means[name]
+            sigma = stds[name]
+            s     = directions[name]
+            # estimate wmax_j, wmin_j
+            wmax = mu + self.k_median * sigma
+            wmin = mu - self.k_median * sigma
 
-                attack_tensor = torch.empty_like(param)
+            # tạo tensor kết quả
+            atk = torch.empty_like(w)
+            r   = torch.rand_like(w)
 
-                mask_up = (direction == -1)
-                mask_down = (direction == 1)
+            mask_up   = s == -1  # tham số giảm → push lên trên
+            mask_down = s ==  1  # tham số tăng → push xuống dưới
 
-                # [wmax, b·wmax] or [wmax, wmax/b]
-                upper_up = torch.where(mu > 0, mu * self.b, mu / self.b)
-                lower_up = mu
+            # sample uniform
+            # s==-1: [wmax, b * wmax]
+            atk[mask_up] = wmax[mask_up] + r[mask_up] * (self.b * wmax[mask_up] - wmax[mask_up])
+            # s==1: [b * wmin, wmin]
+            atk[mask_down] = self.b * wmin[mask_down] + r[mask_down] * (wmin[mask_down] - self.b * wmin[mask_down])
 
-                # [b·wmin, wmin] or [wmin/b, wmin]
-                lower_down = torch.where(mu < 0, mu * self.b, mu / self.b)
-                upper_down = mu
+            # giữ nguyên với s==0
+            zero_mask = ~(mask_up | mask_down)
+            atk[zero_mask] = w[zero_mask]
 
-                attack_tensor[mask_up] = lower_up[mask_up] + rand_tensor[mask_up] * (upper_up[mask_up] - lower_up[mask_up])
-                attack_tensor[mask_down] = lower_down[mask_down] + rand_tensor[mask_down] * (upper_down[mask_down] - lower_down[mask_down])
-                attack_tensor[direction == 0] = param[direction == 0]
+            crafted[name] = atk
 
-                attack_model[name] = attack_tensor
-            except Exception as e:
-                logging.warning(f"[MedianAttack] Failed to craft param {name}: {e}")
-                attack_model[name] = param
-        return attack_model
+        return crafted
 
     def model_attack(self, received_weights: OrderedDict) -> OrderedDict:
         try:
-            logging.info("[MedianAttack] Performing partial knowledge median attack")
+            logging.info("[MedianAttack] running partial‑knowledge median attack")
             return self.generate_attack_model(received_weights)
-        except Exception as e:
-            logging.exception("[MedianAttack] Attack failed. Returning original weights.")
+        except Exception:
+            logging.exception("[MedianAttack] failed, returning original")
             return received_weights

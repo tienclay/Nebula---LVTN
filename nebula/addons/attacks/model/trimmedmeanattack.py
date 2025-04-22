@@ -3,13 +3,14 @@ from collections import OrderedDict
 
 import numpy as np
 import torch
+
 from nebula.addons.attacks.model.modelattack import ModelAttack
 
 
 class TrimmedMeanAttack(ModelAttack):
     """
     Partial‑knowledge trimmed‑mean attack (USENIX 2020, §3.4).
-    Attacker chỉ biết lịch sử các mô hình đã chính mình gửi, 
+    Attacker chỉ biết lịch sử các mô hình đã chính mình gửi,
     ước lượng hướng thay đổi và biên μ ± k·σ để đẩy tham số
     ra ngoài phạm vi benign.
     """
@@ -19,14 +20,16 @@ class TrimmedMeanAttack(ModelAttack):
 
         # --- các tham số cấu hình ---
         self.round_start_attack = int(attack_params.get("round_start_attack", 1))
-        self.round_stop_attack  = int(attack_params.get("round_stop_attack", 10 ** 9))
-        self.default_sigma      = float(attack_params.get("default_sigma", 0.2))
-        self.history_size       = int(attack_params.get("history_size", 20))
+        self.round_stop_attack = int(attack_params.get("round_stop_attack", 10**9))
+        self.default_sigma = float(attack_params.get("default_sigma", 0.2))
+        self.history_size = int(attack_params.get("history_size", 20))
 
         self.rng = np.random.RandomState(attack_params.get("random_seed", 42))
+        self.k1 = float(attack_params.get("k1", 9))
+        self.k2 = float(attack_params.get("k2", 12)) 
         self.model_history: list[OrderedDict[str, torch.Tensor]] = []
 
-        self.current_round = 0   # sẽ tăng ở mỗi lần gọi attack
+        self.current_round = 0  # sẽ tăng ở mỗi lần gọi attack
 
     # ------------------------------------------------------------------ #
     #                       Công cụ tiện ích nội bộ                      #
@@ -50,11 +53,9 @@ class TrimmedMeanAttack(ModelAttack):
         means, stds = {}, {}
         for k in self.model_history[0]:
             stacked = torch.stack([m[k] for m in self.model_history])
-            mu      = stacked.mean(0)
-            sigma   = stacked.std(0).clamp_min(1e-6)
-            sigma   = torch.where(sigma < 1e-6,
-                                  torch.full_like(sigma, self.default_sigma),
-                                  sigma)
+            mu = stacked.mean(0)
+            sigma = stacked.std(0).clamp_min(1e-6)
+            sigma = torch.where(sigma < 1e-6, torch.full_like(sigma, self.default_sigma), sigma)
             means[k], stds[k] = mu, sigma
         return means, stds
 
@@ -99,24 +100,26 @@ class TrimmedMeanAttack(ModelAttack):
                 attack_model[name] = param
                 continue
 
-            mu, sigma   = means[name], stds[name]
-            direction   = directions[name]
+            mu, sigma = means[name], stds[name]
+            direction = directions[name]
             rand_tensor = torch.rand_like(param)
 
             # dải lấy mẫu
-            upper_high  = mu + 4 * sigma   # μ + 4σ
-            upper_low   = mu + 3 * sigma   # μ + 3σ
-            lower_high  = mu - 3 * sigma   # μ - 3σ
-            lower_low   = mu - 4 * sigma   # μ - 4σ
+            upper_high = mu + self.k2 * sigma  # μ + 4σ
+            upper_low = mu + self.k1 * sigma  # μ + 3σ
+            lower_high = mu - self.k1 * sigma  # μ - 3σ
+            lower_low = mu - self.k2 * sigma  # μ - 4σ
 
-            atk         = torch.empty_like(param)
+            atk = torch.empty_like(param)
 
-            mask_up   = direction == -1   # tham số đang giảm ⇒ đẩy lên cao
-            mask_down = direction ==  1   # tham số đang tăng ⇒ đẩy xuống thấp
+            mask_up = direction == -1  # tham số đang giảm ⇒ đẩy lên cao
+            mask_down = direction == 1  # tham số đang tăng ⇒ đẩy xuống thấp
 
             # Uniform sample trên từng đoạn
-            atk[mask_up]   = upper_low[mask_up]   + rand_tensor[mask_up] * (upper_high[mask_up]  - upper_low[mask_up])
-            atk[mask_down] = lower_low[mask_down] + rand_tensor[mask_down] * (lower_high[mask_down] - lower_low[mask_down])
+            atk[mask_up] = upper_low[mask_up] + rand_tensor[mask_up] * (upper_high[mask_up] - upper_low[mask_up])
+            atk[mask_down] = lower_low[mask_down] + rand_tensor[mask_down] * (
+                lower_high[mask_down] - lower_low[mask_down]
+            )
 
             # giữ nguyên nếu direction == 0
             zero_mask = ~(mask_up | mask_down)
@@ -126,7 +129,6 @@ class TrimmedMeanAttack(ModelAttack):
 
         return attack_model
 
-    # hàm chính được framework gọi
     def model_attack(self, received_weights: OrderedDict) -> OrderedDict:
         try:
             logging.info("[TrimmedMeanAttack] running partial‑knowledge trimmed‑mean attack")
