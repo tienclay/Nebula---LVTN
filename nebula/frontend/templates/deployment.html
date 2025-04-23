@@ -642,6 +642,18 @@
                                 placeholder="Delay" min="0" value="10"
                                 style="display: inline; width: 80%">
                         </div>
+                        <h5 id="k1-title" class="step-title" style="display: none;">K1</h5>
+                        <div class="form-check form-check-inline" id="k1-container" style="display: none;">
+                            <input type="number" class="form-control" id="k1-attack"
+                                placeholder="k1" min="1" value="3"
+                                style="display: inline; width: 80%">
+                        </div>
+                        <h5 id="k2-title" class="step-title" style="display: none;">K2</h5>
+                        <div class="form-check form-check-inline" id="k2-container" style="display: none;">
+                            <input type="number" class="form-control" id="k2-attack"
+                                placeholder="k2" min="1" value="4"
+                                style="display: inline; width: 80%">
+                        </div>
                         <h5 id="start-attack-title" class="step-title" style="display: none;">Starting round</h5>
                         <div class="form-check form-check-inline" id="start-attack-container" style="display: none;">
                             <input type="number" class="form-control" id="start-attack"
@@ -1196,6 +1208,8 @@
             data["attack_params"].strength = document.getElementById("strength").value;
             data["attack_params"].layer_idx = document.getElementById("layer_idx").value;
             data["attack_params"].delay = document.getElementById("delay").value;
+            data["attack_params"].k1 = document.getElementById("k1-attack").value;
+            data["attack_params"].k2 = document.getElementById("k2-attack").value;
             data["attack_params"].round_start_attack = document.getElementById("start-attack").value
             data["attack_params"].round_stop_attack = document.getElementById("stop-attack").value
             // Step 13
@@ -1323,6 +1337,8 @@
                 document.getElementById("strength").value = data.attack_params.strength;
                 document.getElementById("layer_idx").value = data.attack_params.layer_idx;
                 document.getElementById("delay").value = data.attack_params.delay;
+                document.getElementById("k1-attack").value = data.attack_params.k1;
+                document.getElementById("k2-attack").value = data.attack_params.k2;
                 document.getElementById("start-attack").value = data.attack_params.round_start_attack
                 document.getElementById("stop-attack").value = data.attack_params.round_stop_attack
 
@@ -2873,12 +2889,16 @@
                 document.getElementById("targeted").dispatchEvent(new Event('change'));
                 document.getElementById("targeted-title").style.display = "none";
                 document.getElementById("targeted-container").style.display = "none";
-                document.getElementById("strength-title").style.display = "block";
-                document.getElementById("strength-container").style.display = "block";
+                document.getElementById("strength-title").style.display = "none";
+                document.getElementById("strength-container").style.display = "none";
                 document.getElementById("layer_idx-title").style.display = "none";
                 document.getElementById("layer_idx-container").style.display = "none";
                 document.getElementById("delay-title").style.display = "none";
                 document.getElementById("delay-container").style.display = "none";
+                document.getElementById("k1-title").style.display = "block";
+                document.getElementById("k1-container").style.display = "block";
+                document.getElementById("k2-title").style.display = "block";
+                document.getElementById("k2-container").style.display = "block";
                 document.getElementById("start-attack-title").style.display = "block";
                 document.getElementById("start-attack-container").style.display = "block";
                 document.getElementById("stop-attack-title").style.display = "block";
@@ -2903,6 +2923,10 @@
                 document.getElementById("layer_idx-container").style.display = "none";
                 document.getElementById("delay-title").style.display = "none";
                 document.getElementById("delay-container").style.display = "none";
+                document.getElementById("k1-title").style.display = "block";
+                document.getElementById("k1-container").style.display = "block";
+                document.getElementById("k2-title").style.display = "block";
+                document.getElementById("k2-container").style.display = "block";
                 document.getElementById("start-attack-title").style.display = "block";
                 document.getElementById("start-attack-container").style.display = "block";
                 document.getElementById("stop-attack-title").style.display = "block";
