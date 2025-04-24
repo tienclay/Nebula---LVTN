@@ -3,6 +3,7 @@ import logging
 import os
 
 import docker
+from collections import OrderedDict
 
 from nebula.addons.attacks.attacks import create_attack
 from nebula.addons.functions import print_msg_box
@@ -75,6 +76,7 @@ class Engine:
         self.name = config.participant["device_args"]["name"]
         self.docker_id = config.participant["device_args"]["docker_id"]
         self.client = docker.from_env()
+        self.global_weights_history = []
 
         print_banner()
 
@@ -442,14 +444,27 @@ class Engine:
                             submodel, weights, source=self.get_name(), round=self.round
                         )
             logging.info(f"Current aggregator is: {self.aggregator}")
+            
+    def get_benign_weights(self):
+        """
+        Return a list of weight dicts from benign workers for the current round.
+        Assumes the aggregator provides `get_benign_models()`.
+        """
+        return self.aggregator.get_benign_models()
+    
+    def get_global_weights_history(self):
+        """
+        Return the stored history of global model weights across rounds.
+        """
+        return self.global_weights_history
 
     async def _waiting_model_updates(self):
         logging.info(f"💤  Waiting convergence in round {self.round}.")
         params = await self.aggregator.get_aggregation()
         if params is not None:
-            logging.info(
-                f"_waiting_model_updates | Aggregation done for round {self.round}, including parameters in local model."
-            )
+            # record a detached copy of global weights
+            copied = OrderedDict((k, v.clone().detach()) for k, v in params.items())
+            self.global_weights_history.append(copied)
             self.trainer.set_model_parameters(params)
         else:
             logging.error("Aggregation finished with no parameters")

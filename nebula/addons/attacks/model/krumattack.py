@@ -4,187 +4,142 @@ import numpy as np
 import torch
 from nebula.addons.attacks.model.modelattack import ModelAttack
 
-
 class KrumAttack(ModelAttack):
-    """
-    Implements the optimization‐based attack on Krum (§3.2 USENIX 2020).
-    Supports both full‐knowledge and partial‐knowledge modes.
-    """
-
     def __init__(self, engine, attack_params):
         super().__init__(engine)
+        self.round_start = int(attack_params.get("round_start_attack", 1))
+        self.round_stop = int(attack_params.get("round_stop_attack", 10**9))
+        self.epsilon = float(attack_params.get("epsilon", 1e-3))
+        self.threshold = float(attack_params.get("lambda_threshold", 1e-5))
+        self.max_iters = int(attack_params.get("max_binary_search", 20))
+        self.use_full_knowledge = bool(attack_params.get("use_full_knowledge", True))
+        self.c = int(attack_params.get("num_compromised", 1))
 
-        # attack parameters
-        self.full_knowledge   = bool(attack_params.get("full_knowledge", False))
-        self.round_start      = int(attack_params.get("round_start", 1))
-        self.round_end        = int(attack_params.get("round_end", 10**9))
-        self.compromised_c    = int(attack_params["compromised_count"])
-        self.total_workers    = int(attack_params["total_workers"])  # m
-        self.epsilon          = float(attack_params.get("epsilon", 1e-3))
-        self.threshold        = float(attack_params.get("lambda_threshold", 1e-5))
-        self.max_binary_iters = int(attack_params.get("max_binary_iters", 50))
-
-        # for partial‐knowledge
-        self.history: list[OrderedDict[str, torch.Tensor]] = []
-
-        # track rounds
-        self.round = 0
-
-    # ————————————— tiện ích chung —————————————
-
-    @staticmethod
-    def _flatten_params(model: OrderedDict) -> torch.Tensor:
-        """Convert all tensors into one long vector."""
-        return torch.cat([v.view(-1) for v in model.values()])
-
-    @staticmethod
-    def _euclidean(a: torch.Tensor, b: torch.Tensor) -> float:
-        """Euclidean distance between two flattened parameter vectors."""
-        return torch.norm(a - b).item()
-
-    def _krum_select(self, candidates: list[OrderedDict]) -> int:
-        """
-        Krum selection: for each candidate i, compute squared distances
-        to all others, take sum of the smallest (m − c − 2) distances,
-        and pick the i with minimal score.
-        Returns index of the chosen model.
-        """
-        m, c = self.total_workers, self.compromised_c
-        k = m - c - 2
-        flats = [self._flatten_params(w) for w in candidates]
-        scores = []
-        for i in range(len(flats)):
-            dists = [(flats[i] - flats[j]).pow(2).sum().item()
-                     for j in range(len(flats)) if j != i]
-            dists.sort()
-            scores.append(sum(dists[:k]))
-        return int(np.argmin(scores))
-
-    # ———————————— full‐knowledge λ solver ————————————
-
-    def _upper_bound_lambda(self, wRe: OrderedDict, benigns: list[OrderedDict]) -> float:
-        """
-        Compute the upper bound in Theorem 1 (Eq.3):
-          λ ≤ 1/(m−2c−1)/√d * ...
-            + 1/√d * max_i D(w_i, wRe)
-        We approximate it by taking the worst‐case terms.
-        """
-        m, c = self.total_workers, self.compromised_c
-        d = self._flatten_params(wRe).numel()
-        # distances from wRe
-        DwRe = [self._euclidean(self._flatten_params(b), self._flatten_params(wRe))
-                for b in benigns]
-        max_DwRe = max(DwRe)
-
-        # for each benign i, find sum of distances to its m−c−2 nearest other benigns
-        sums = []
-        for i, bi in enumerate(benigns):
-            others = benigns[:i] + benigns[i+1:]
-            dists = sorted(self._euclidean(self._flatten_params(bi), self._flatten_params(o))
-                           for o in others)
-            sums.append(sum(dists[: m - c - 2]))
-        min_sum = min(sums)
-
-        return (1.0 / ((m - 2*c - 1) * np.sqrt(d))) * min_sum + (1.0 / np.sqrt(d)) * max_DwRe
-
-    def _binary_search_lambda(self, wRe: OrderedDict, s: torch.Tensor, benigns: list[OrderedDict]):
-        """
-        Binary‐search λ in [0, ub] so that when we craft
-          w1 = wRe − λ·s  and replicate it c times,
-        Krum will select w1 out of [w1,…,w1, benigns…].
-        """
-        ub = self._upper_bound_lambda(wRe, benigns)
-        lb = 0.0
-
-        for _ in range(self.max_binary_iters):
-            mid = (lb + ub) / 2
-            # craft c copies of w1
-            flat = self._flatten_params(wRe) - mid * s
-            # rebuild OrderedDict with same shapes
-            w1 = OrderedDict()
-            idx = 0
-            for k, v in wRe.items():
-                numel = v.numel()
-                w1[k] = flat[idx:idx+numel].view_as(v).to(v.device)
-                idx += numel
-            # test Krum
-            candidates = [w1] * self.compromised_c + benigns
-            chosen = self._krum_select(candidates)
-            if chosen == 0:
-                return mid, w1
-            ub = mid
-            if ub - lb < self.threshold:
-                break
-        # fallback: tiny λ
-        return None, wRe
-
-    # —————————— partial‐knowledge helper ——————————
-
-    def _add_history(self, w: OrderedDict):
-        snap = OrderedDict((k, v.clone().detach()) for k, v in w.items())
-        self.history.append(snap)
-        if len(self.history) > self.compromised_c:
-            self.history.pop(0)
-
-    def _partial_stats(self):
-        # mean of c before‐attack models
-        flats = [self._flatten_params(w) for w in self.history]
-        avg = torch.stack(flats, dim=0).mean(0)
-        return avg
-
-    # —————————————— attack entry point ——————————————
-
-    def generate_attack_model(self, wRe: OrderedDict, benigns: list[OrderedDict]=None) -> OrderedDict:
-        """
-        If full_knowledge=True, require benigns list and solve Eq.2 via binary‐search.
-        Else partial: solve Eq.4 using history and craft w1 = wRe − λ·ŝ.
-        """
-        self.round += 1
-        # outside attack window?
-        if not (self.round_start <= self.round <= self.round_end):
-            return wRe
-
-        # FULL KNOWLEDGE PATH
-        if self.full_knowledge:
-            if benigns is None:
-                logging.warning("[KrumAttack] full_knowledge requires benigns list")
-                return wRe
-
-            # estimate s from true wRe vs. previous global?
-            # here we reuse partial‐estimation on history:
-            flat_prev = self._flatten_params(self.history[-1]) if self.history else torch.zeros_like(self._flatten_params(wRe))
-            s = torch.sign(self._flatten_params(wRe) - flat_prev)
-
-            λ, w1 = self._binary_search_lambda(wRe, s, benigns)
-            return w1
-
-        # PARTIAL KNOWLEDGE PATH
-        # 1. update self.history with before‐attack local model
-        self._add_history(wRe)
-
-        # 2. compute ŝ = sign( mean(history) - wRe )
-        avg = self._partial_stats()
-        s_hat = torch.sign(avg - self._flatten_params(wRe))
-
-        # 3. choose λ = ||avg - wRe||_∞  (max diff) as a simple bound
-        diff = (avg - self._flatten_params(wRe)).abs()
-        λ = diff.max().item()
-
-        # 4. craft w1 = wRe − λ·ŝ
-        flat_w1 = self._flatten_params(wRe) - λ * s_hat
-        w1 = OrderedDict()
-        idx = 0
-        for k, v in wRe.items():
-            numel = v.numel()
-            w1[k] = flat_w1[idx:idx+numel].view_as(v).to(v.device)
-            idx += numel
-
-        return w1
-
-    def model_attack(self, received_weights: OrderedDict, benigns: list[OrderedDict]=None) -> OrderedDict:
+    def _get_global_direction(self):
         try:
-            logging.info("[KrumAttack] running attack (round %d)", self.round+1)
-            return self.generate_attack_model(received_weights, benigns)
+            history = self.engine.get_global_weights_history()
+            if len(history) < 2:
+                raise ValueError("Not enough global history to compute direction")
+            prev, curr = history[-2], history[-1]
+            return {k: torch.sign(curr[k] - prev[k]) for k in curr}
         except Exception:
-            logging.exception("[KrumAttack] failed—return original")
-            return received_weights
+            logging.exception("[KrumAttack] Failed to get global direction")
+            return {}
+
+    def _compute_upper_bound_lambda(self, benign_list, wRe, directions):
+        try:
+            d = sum(v.numel() for v in wRe.values())
+            wRe_tensor = wRe[next(iter(wRe))].view(-1)
+            dist_wre = [
+                torch.dist(bw[next(iter(wRe))].view(-1), wRe_tensor)
+                for bw in benign_list
+            ]
+            max_dist = max(dist_wre)
+            return max_dist / np.sqrt(d)
+        except Exception:
+            logging.exception("[KrumAttack] Failed to compute lambda upper bound")
+            return 1.0
+
+    def _binary_search_lambda(self, wRe, s, benign_list):
+        try:
+            lo, hi = 0.0, self._compute_upper_bound_lambda(benign_list, wRe, s)
+            best_lambda = 0.0
+            for _ in range(self.max_iters):
+                mid = (lo + hi) / 2.0
+                w1 = OrderedDict({k: wRe[k] - mid * s[k] for k in wRe})
+                models = OrderedDict()
+                models['adv0'] = (w1, 1)
+                for i in range(1, self.c):
+                    perturbed = OrderedDict({
+                        k: w1[k] + (torch.randn_like(w1[k]) * self.epsilon)
+                        for k in w1
+                    })
+                    models[f'adv{i}'] = (perturbed, 1)
+                for idx, bw in enumerate(benign_list):
+                    models[f'ben{idx}'] = (bw, 1)
+
+                try:
+                    agg = self.engine.aggregator.run_aggregation(models)
+                except Exception:
+                    logging.exception("[KrumAttack] Aggregator failed during binary search")
+                    break
+
+                if all(torch.allclose(agg[k], w1[k], atol=1e-6) for k in w1):
+                    best_lambda = mid
+                    lo = mid
+                else:
+                    hi = mid
+
+                if hi - lo < self.threshold:
+                    break
+            return best_lambda
+        except Exception:
+            logging.exception("[KrumAttack] Binary search lambda failed")
+            return 0.0
+
+    def _full_knowledge_attack(self, local_weights):
+        try:
+            benign_list = self.engine.get_benign_weights()
+            if not benign_list:
+                logging.warning("[KrumAttack] No benign weights for full-knowledge attack")
+                return local_weights
+            history = self.engine.get_global_weights_history()
+            if len(history) < 2:
+                logging.warning("[KrumAttack] Insufficient global history")
+                return local_weights
+            wRe = history[-1]
+            s = self._get_global_direction()
+            if not s:
+                return local_weights
+            lam = self._binary_search_lambda(wRe, s, benign_list)
+            w1 = OrderedDict({k: wRe[k] - lam * s[k] for k in wRe})
+            attacked = OrderedDict()
+            attacked['adv0'] = w1
+            for i in range(1, self.c):
+                attacked[f'adv{i}'] = OrderedDict({
+                    k: w1[k] + (torch.randn_like(w1[k]) * self.epsilon)
+                    for k in w1
+                })
+            return attacked['adv0']
+        except Exception:
+            logging.exception("[KrumAttack] Full-knowledge attack failed")
+            return local_weights
+
+    def _partial_knowledge_attack(self, local_weights):
+        try:
+            if not local_weights:
+                return local_weights[0]
+            mean_local = OrderedDict({
+                k: sum(w[k] for w in local_weights) / len(local_weights)
+                for k in local_weights[0]
+            })
+            history = self.engine.get_global_weights_history()
+            if not history:
+                return local_weights[0]
+            wRe = history[-1]
+            s = {k: torch.sign(mean_local[k] - wRe[k]) for k in wRe}
+            lam = self._binary_search_lambda(wRe, s, local_weights)
+            w1 = OrderedDict({k: wRe[k] - lam * s[k] for k in wRe})
+            return w1
+        except Exception:
+            logging.exception("[KrumAttack] Partial-knowledge attack failed")
+            return local_weights[0]
+
+    def generate_attack_model(self, local_weights):
+        try:
+            self.current_round += 1
+            if not (self.round_start <= self.current_round <= self.round_stop):
+                return local_weights[0]
+            if self.use_full_knowledge:
+                return self._full_knowledge_attack(local_weights)
+            return self._partial_knowledge_attack(local_weights)
+        except Exception:
+            logging.exception("[KrumAttack] generate_attack_model failed")
+            return local_weights[0]
+
+    def model_attack(self, received_weights):
+        try:
+            return self.generate_attack_model(received_weights)
+        except Exception:
+            logging.exception("[KrumAttack] model_attack failed")
+            return received_weights[0]
