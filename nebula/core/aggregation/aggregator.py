@@ -97,6 +97,8 @@ class Aggregator(ABC):
 
     def set_waiting_global_update(self):
         self._waiting_global_update = True
+    
+    
 
     async def reset(self):
         await self._add_model_lock.acquire_async()
@@ -245,6 +247,17 @@ class Aggregator(ABC):
         aggregated_result = self.run_aggregation(self._pending_models_to_aggregate)
         self._pending_models_to_aggregate.clear()
         return aggregated_result
+    
+    def get_benign_models(self):
+        """
+        Trả về danh sách weight dict của các node khác (benign)
+        đang chờ aggregate, loại bỏ chính node này (source == self.engine.get_addr()).
+        """
+        return [
+            model
+            for src, (model, _) in self._pending_models_to_aggregate.items()
+            if src != self.engine.get_addr()
+        ]
 
     async def include_next_model_in_buffer(self, model, weight, source=None, round=None):
         logging.info(f"🔄  include_next_model_in_buffer | source={source} | round={round} | weight={weight}")
