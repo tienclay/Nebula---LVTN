@@ -2,6 +2,8 @@ import importlib
 import logging
 from abc import ABC, abstractmethod
 
+
+
 # To take into account:
 # - Malicious nodes do not train on their own data
 # - Malicious nodes aggregate the weights of the other nodes, but not their own
@@ -119,6 +121,7 @@ def create_attack(engine) -> Attack:
     from nebula.addons.attacks.model.noiseinjection import NoiseInjectionAttack
     from nebula.addons.attacks.model.swappingweights import SwappingWeightsAttack
     from nebula.addons.attacks.model.trimmedmeanattack import TrimmedMeanAttack
+    from nebula.addons.attacks.model.krumattack import KrumAttack
 
     ATTACK_MAP = {
         "GLL Neuron Inversion": GLLNeuronInversionAttack,
@@ -130,6 +133,7 @@ def create_attack(engine) -> Attack:
         "Model Poisoning": ModelPoisonAttack,
         "Trimmed Mean": TrimmedMeanAttack,
         "Median": MedianAttack,
+        "Krum": KrumAttack,
     }
 
     # Get attack name and parameters from the engine configuration
