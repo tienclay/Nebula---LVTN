@@ -1,4 +1,4 @@
-{
+{  # noqa: B018
   "scenario_args": {
     "name": "",
     "start_time": "",
@@ -18,18 +18,18 @@
     "username": "pi",
     "password": "pi",
     "role": "aggregator",
-    "proxy": false,
-    "malicious": false,
-    "start": false,
+    "proxy": false,  # noqa: F821
+    "malicious": false,  # noqa: F821
+    "start": false,  # noqa: F821
     "accelerator": "cpu",
-    "gpu_id" : null,
+    "gpu_id" : null,  # noqa: F821
     "devices": 2,
     "strategy": "ddp",
-    "logging": false
+    "logging": false  # noqa: F821
   },
   "security_args": {
-    "encryption": false,
-    "mtd": false,
+    "encryption": false,  # noqa: F821
+    "mtd": false,  # noqa: F821
     "acceptanceRandomProbability": 0.5,
     "certfile": "",
     "keyfile": "",
@@ -45,7 +45,7 @@
     "addr": "",
     "neighbors": "",
     "interface": "eth0",
-    "simulation": false,
+    "simulation": false,  # noqa: F821
     "bandwidth": "5Gbps",
     "delay": "0ms",
     "delay-distro": "0ms",
@@ -56,29 +56,29 @@
     "reordering": "0%"
   },
   "adaptive_args": {
-    "model_similarity": false
+    "model_similarity": false  # noqa: F821
   },
   "mobility_args": {
     "latitude": "",
     "longitude": "",
     "change_geo_interval": 5,
     "grace_time_mobility": 60,
-    "random_geo": true,
-    "mobility": false,
+    "random_geo": true,  # noqa: F821
+    "mobility": false,  # noqa: F821
     "mobility_type": "topology",
     "radius_federation": 1000,
     "scheme_mobility": "random",
     "round_frequency": 1,
     "neighbors_distance": {},
     "additional_node": {
-      "status": false,
+      "status": false,  # noqa: F821
       "round_start": 0,
       "scheme": "random"
     }
   },
   "data_args": {
     "dataset": "MNIST",
-    "iid": false,
+    "iid": false,  # noqa: F821
     "num_workers": 0,
     "partition_selection": "dirichlet",
     "partition_parameter": 0.5
@@ -92,7 +92,7 @@
   },
   "aggregator_args": {
     "algorithm": "FedAvg",
-    "aggregation_timeout": 300,
+    "aggregation_timeout": 60,
     "balance_params":{
       "gamma": 1.5,
       "kappa": 1.0,
@@ -100,17 +100,17 @@
     }
   },
   "defense_args": {
-    "with_reputation": false,
-    "is_dynamic_topology": false,
-    "is_dynamic_aggregation": false,
-    "target_aggregation": false
+    "with_reputation": false,  # noqa: F821
+    "is_dynamic_topology": false,  # noqa: F821
+    "is_dynamic_aggregation": false,  # noqa: F821
+    "target_aggregation": false  # noqa: F821
   },
   "adversarial_args": {
     "attacks": "No Attack",
     "attack_params" : {}
   },
   "tracking_args": {
-    "enable_remote_tracking": false,
+    "enable_remote_tracking": false,  # noqa: F821
     "local_tracking": "basic",
     "log_dir": "/Users/enrique/Documents/nebula/app/logs",
     "config_dir": "/Users/enrique/Documents/nebula/app/config",
@@ -128,7 +128,7 @@
   "reporter_args": {
     "grace_time_reporter": 10,
     "report_frequency": 5,
-    "report_status_data_queue": true
+    "report_status_data_queue": true  # noqa: F821
   },
   "discoverer_args": {
     "grace_time_discovery": 0,

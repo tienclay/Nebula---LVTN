@@ -56,7 +56,13 @@ class ModelAttack(Attack):
                 logging.info(f"malicious_aggregate | original aggregation result={accum}")
 
                 if new_args is not None:
-                    accum = self.model_attack(accum)
+                    # Handle aggregators that return (params, metrics_dict) tuples
+                    if isinstance(accum, tuple):
+                        params, metrics = accum
+                        params = self.model_attack(params)
+                        accum = (params, metrics)
+                    else:
+                        accum = self.model_attack(accum)
                     logging.info(f"malicious_aggregate | attack aggregation result={accum}")
                 return accum
 

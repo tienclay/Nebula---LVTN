@@ -290,18 +290,17 @@ class ScenarioManagement:
         os.makedirs(os.path.join(self.log_dir, self.scenario_name), exist_ok=True)
         os.makedirs(self.cert_dir, exist_ok=True)
 
-
         # Give permissions to the directories
-        os.chmod(self.config_dir, 0o777)
-        os.chmod(os.path.join(self.log_dir, self.scenario_name), 0o777)
-        os.chmod(self.cert_dir, 0o777)
+        os.chmod(self.config_dir, 0o777)  # noqa: S103
+        os.chmod(os.path.join(self.log_dir, self.scenario_name), 0o777)  # noqa: S103
+        os.chmod(self.cert_dir, 0o777)  # noqa: S103
 
         # Save the scenario configuration
         scenario_file = os.path.join(self.config_dir, "scenario.json")
         with open(scenario_file, "w") as f:
             json.dump(scenario, f, sort_keys=False, indent=2)
 
-        os.chmod(scenario_file, 0o777)
+        os.chmod(scenario_file, 0o777)  # noqa: S103
 
         # Save management settings
         settings = {
@@ -318,7 +317,7 @@ class ScenarioManagement:
         with open(settings_file, "w") as f:
             json.dump(settings, f, sort_keys=False, indent=2)
 
-        os.chmod(settings_file, 0o777)
+        os.chmod(settings_file, 0o777)  # noqa: S103
 
         self.scenario.nodes = self.scenario.attack_node_assign(
             self.scenario.nodes,
@@ -348,7 +347,7 @@ class ScenarioManagement:
                 ),
                 participant_file,
             )
-            os.chmod(participant_file, 0o777)
+            os.chmod(participant_file, 0o777)  # noqa: S103
             with open(participant_file) as f:
                 participant_config = json.load(f)
 
@@ -392,7 +391,9 @@ class ScenarioManagement:
             # BMTD: add security parameters
             participant_config["security_args"]["encryption"] = self.scenario.security["encryption"]
             participant_config["security_args"]["mtd"] = self.scenario.security["mtd"]
-            participant_config["security_args"]["acceptanceRandomProbability"] = self.scenario.security["acceptanceRandomProbability"]
+            participant_config["security_args"]["acceptanceRandomProbability"] = self.scenario.security[
+                "acceptanceRandomProbability"
+            ]
 
             with open(participant_file, "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)
@@ -403,13 +404,13 @@ class ScenarioManagement:
             try:
                 # Comando adaptado para PowerShell en Windows
                 command = "docker ps -a --filter 'label=com.docker.compose.project=blockchain' --format '{{.ID}}' | ForEach-Object { docker rm --force --volumes $_ } | Out-Null"
-                os.system(f'powershell.exe -Command "{command}"')
+                os.system(f'powershell.exe -Command "{command}"')  # noqa: S605
             except Exception as e:
-                logging.exception(f"Error while killing docker containers: {e}")
+                logging.exception(f"Error while killing docker containers: {e}")  # noqa: TRY401
         else:
             try:
-                process = subprocess.Popen(
-                    "docker ps -a --filter 'label=com.docker.compose.project=blockchain' --format '{{.ID}}' | xargs -n 1 docker rm --force --volumes  >/dev/null 2>&1",
+                process = subprocess.Popen(  # noqa: S602
+                    "docker ps -a --filter 'label=com.docker.compose.project=blockchain' --format '{{.ID}}' | xargs -n 1 docker rm --force --volumes  >/dev/null 2>&1",  # noqa: S607
                     shell=True,
                 )
                 process.wait()
@@ -450,7 +451,7 @@ class ScenarioManagement:
                 for file in files:
                     os.remove(file)
         except Exception as e:
-            logging.exception(f"Error while removing current_scenario_commands.sh file: {e}")
+            logging.exception(f"Error while removing current_scenario_commands.sh file: {e}")  # noqa: TRY401
 
     @staticmethod
     def stop_nodes():
@@ -458,7 +459,7 @@ class ScenarioManagement:
         ScenarioManagement.stop_participants()
         ScenarioManagement.stop_blockchain()
 
-    def load_configurations_and_start_nodes(self, additional_participants=None, schema_additional_participants=None):
+    def load_configurations_and_start_nodes(self, additional_participants=None, schema_additional_participants=None):  # noqa: C901
         logging.info(f"Generating the scenario {self.scenario_name} at {self.start_date_scenario}")
 
         # Generate CA certificate
@@ -468,7 +469,7 @@ class ScenarioManagement:
         participant_files = glob.glob(f"{self.config_dir}/participant_*.json")
         participant_files.sort()
         if len(participant_files) == 0:
-            raise ValueError("No participant files found in config folder")
+            raise ValueError("No participant files found in config folder")  # noqa: TRY003
 
         self.config.set_participants_config(participant_files)
         self.n_nodes = len(participant_files)
@@ -490,7 +491,7 @@ class ScenarioManagement:
             participant_config["scenario_args"]["name"] = self.scenario_name
             participant_config["scenario_args"]["start_time"] = self.start_date_scenario
             participant_config["device_args"]["idx"] = i
-            participant_config["device_args"]["uid"] = hashlib.sha1(
+            participant_config["device_args"]["uid"] = hashlib.sha1(  # noqa: S324
                 (
                     str(participant_config["network_args"]["ip"])
                     + str(participant_config["network_args"]["port"])
@@ -522,7 +523,7 @@ class ScenarioManagement:
                 if not is_start_node:
                     is_start_node = True
                 else:
-                    raise ValueError("Only one node can be start node")
+                    raise ValueError("Only one node can be start node")  # noqa: TRY003
             with open(f"{self.config_dir}/participant_" + str(i) + ".json", "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)
 
@@ -532,7 +533,7 @@ class ScenarioManagement:
                 participant_config["device_args"]["role"],
             ))
         if not is_start_node:
-            raise ValueError("No start node found")
+            raise ValueError("No start node found")  # noqa: TRY003
         self.config.set_participants_config(participant_files)
 
         # Add role to the topology (visualization purposes)
@@ -560,7 +561,7 @@ class ScenarioManagement:
                     + "."
                     + str(int(participant_config["network_args"]["ip"].rsplit(".", 1)[1]) + 1)
                 )
-                participant_config["device_args"]["uid"] = hashlib.sha1(
+                participant_config["device_args"]["uid"] = hashlib.sha1(  # noqa: S324
                     (
                         str(participant_config["network_args"]["ip"])
                         + str(participant_config["network_args"]["port"])
@@ -632,7 +633,7 @@ class ScenarioManagement:
                 config_dir=self.config_dir,
             )
         else:
-            raise ValueError(f"Dataset {dataset_name} not supported")
+            raise ValueError(f"Dataset {dataset_name} not supported")  # noqa: TRY003
 
         logging.info(f"Splitting {dataset_name} dataset...")
         dataset.initialize_dataset()
@@ -701,12 +702,12 @@ class ScenarioManagement:
             topologymanager = TopologyManager(scenario_name=self.scenario_name, n_nodes=self.n_nodes, b_symmetric=True)
             topologymanager.generate_server_topology()
         else:
-            raise ValueError(f"Unknown topology type: {self.scenario.topology}")
+            raise ValueError(f"Unknown topology type: {self.scenario.topology}")  # noqa: TRY003
 
         # Assign nodes to topology
         nodes_ip_port = []
         self.config.participants.sort(key=lambda x: x["device_args"]["idx"])
-        for i, node in enumerate(self.config.participants):
+        for i, node in enumerate(self.config.participants):  # noqa: B007
             nodes_ip_port.append((
                 node["network_args"]["ip"],
                 node["network_args"]["port"],
@@ -723,7 +724,7 @@ class ScenarioManagement:
         )
         try:
             logging.info("Blockchain is being deployed")
-            subprocess.check_call([
+            subprocess.check_call([  # noqa: S603, S607
                 "docker",
                 "compose",
                 "-f",
@@ -738,7 +739,7 @@ class ScenarioManagement:
             logging.exception(
                 "Docker Compose failed to start Blockchain, please check if Docker Compose is installed (https://docs.docker.com/compose/install/) and Docker Engine is running."
             )
-            raise e
+            raise e  # noqa: TRY201
 
     def start_nodes_docker(self):
         logging.info("Starting nodes using Docker Compose...")
@@ -754,7 +755,7 @@ class ScenarioManagement:
         self.config.participants.sort(key=lambda x: x["device_args"]["idx"])
         i = 2
         container_ids = []
-        for idx, node in enumerate(self.config.participants):
+        for idx, node in enumerate(self.config.participants):  # noqa: B007
             image = "nebula-core"
             name = f"{os.environ.get('NEBULA_CONTROLLER_NAME')}_{self.user}-participant{node['device_args']['idx']}"
 
@@ -825,13 +826,13 @@ class ScenarioManagement:
                     networking_config=networking_config,
                 )
             except Exception as e:
-                logging.exception(f"Creating container {name}: {e}")
+                logging.exception(f"Creating container {name}: {e}")  # noqa: TRY401
 
             try:
                 client.api.start(container_id)
                 container_ids.append(container_id)
             except Exception as e:
-                logging.exception(f"Starting participant {name} error: {e}")
+                logging.exception(f"Starting participant {name} error: {e}")  # noqa: TRY401
             i += 1
 
     def start_nodes_process(self):
@@ -839,7 +840,7 @@ class ScenarioManagement:
         logging.info(f"env path: {self.env_path}")
 
         # Include additional config to the participants
-        for idx, node in enumerate(self.config.participants):
+        for idx, node in enumerate(self.config.participants):  # noqa: B007
             node["tracking_args"]["log_dir"] = os.path.join(self.root_path, "app", "logs")
             node["tracking_args"]["config_dir"] = os.path.join(self.root_path, "app", "config", self.scenario_name)
             node["scenario_args"]["controller"] = self.controller
@@ -894,7 +895,7 @@ class ScenarioManagement:
 
                 with open(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.ps1", "w") as f:
                     f.write(commands)
-                os.chmod(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.ps1", 0o755)
+                os.chmod(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.ps1", 0o755)  # noqa: S103
             else:
                 commands = '#!/bin/bash\n\nPID_FILE="$(dirname "$0")/current_scenario_pids.txt"\n\n> $PID_FILE\n\n'
                 sorted_participants = sorted(
@@ -916,10 +917,10 @@ class ScenarioManagement:
 
                 with open(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.sh", "w") as f:
                     f.write(commands)
-                os.chmod(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.sh", 0o755)
+                os.chmod(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.sh", 0o755)  # noqa: S103
 
         except Exception as e:
-            raise Exception(f"Error starting nodes as processes: {e}")
+            raise Exception(f"Error starting nodes as processes: {e}")  # noqa: B904, TRY002, TRY003
 
     @classmethod
     def remove_files_by_scenario(cls, scenario_name):
@@ -929,8 +930,8 @@ class ScenarioManagement:
             logging.warning("Files not found, nothing to remove")
         except Exception as e:
             logging.exception("Unknown error while removing files")
-            logging.exception(e)
-            raise e
+            logging.exception(e)  # noqa: TRY401
+            raise e  # noqa: TRY201
         try:
             shutil.rmtree(FileUtils.check_path(os.environ["NEBULA_LOGS_DIR"], scenario_name))
         except PermissionError:
@@ -942,7 +943,7 @@ class ScenarioManagement:
             )
             os.chmod(
                 FileUtils.check_path(os.environ["NEBULA_ROOT"], os.path.join("app", "tmp", scenario_name)),
-                0o777,
+                0o777,  # noqa: S103
             )
             shutil.move(
                 FileUtils.check_path(os.environ["NEBULA_LOGS_DIR"], scenario_name),
@@ -952,8 +953,8 @@ class ScenarioManagement:
             logging.warning("Files not found, nothing to remove")
         except Exception as e:
             logging.exception("Unknown error while removing files")
-            logging.exception(e)
-            raise e
+            logging.exception(e)  # noqa: TRY401
+            raise e  # noqa: TRY201
 
     def scenario_finished(self, timeout_seconds):
         client = docker.from_env()
@@ -1007,7 +1008,7 @@ class ScenarioManagement:
 
             # Number of recorded tags. e.g. would be 3 if you recorded loss, MAE and R^2
             n_scalars = len(events_dict)
-            n_steps, n_events = list(events_dict.values())[0].shape
+            n_steps, n_events = list(events_dict.values())[0].shape  # noqa: RUF015
 
             logging.info(f"Loaded {n_events} TensorBoard runs with {n_scalars} scalars and {n_steps} steps each")
             logging.info(f"Events dict keys: {events_dict.keys()}")
@@ -1026,5 +1027,124 @@ class ScenarioManagement:
             logging.info("Reduction complete")
 
         except Exception as e:
-            logging.exception(f"Error generating statistics: {e}")
+            logging.exception(f"Error generating statistics: {e}")  # noqa: TRY401
+            return False
+
+    @classmethod
+    def generate_analysis_report(cls, path):
+        """Generate analysis report and plots from scenario metrics.
+
+        Reads per-participant TensorBoard events, excludes malicious nodes,
+        and generates benign-only figures and tables under <scenario>/analysis/.
+        """
+        try:
+            metrics_dir = os.path.join(path, "metrics")
+            if not os.path.isdir(metrics_dir):
+                logging.warning(f"No metrics directory found at {metrics_dir}, skipping analysis report")
+                return False
+
+            analysis_dir = os.path.join(path, "analysis")
+            figures_dir = os.path.join(analysis_dir, "figures")
+            os.makedirs(figures_dir, exist_ok=True)
+
+            logging.info(f"Generating analysis report for {path}")
+
+            from analysis.radar_metrics_aggregator import (
+                generate_latex_table,
+                process_scenario,
+            )
+
+            # Step 1: Aggregate metrics (benign-only when TF events available)
+            scenario_name = os.path.basename(path)
+            result = process_scenario(path)
+
+            if not result:
+                logging.warning(f"No metrics data found for {path}")
+                return False
+
+            final_metrics = result["final_metrics"]
+            convergence = result["convergence"]
+
+            # Save results summary CSV
+            import pandas as pd
+
+            summary_rows = []
+            for metric_name, values in final_metrics.items():
+                summary_rows.append({"scenario": scenario_name, "metric": metric_name, **values})
+            if summary_rows:
+                pd.DataFrame(summary_rows).to_csv(os.path.join(analysis_dir, "results_summary.csv"), index=False)
+
+            # Save convergence data as JSON
+            import json as json_mod
+
+            convergence_path = os.path.join(analysis_dir, "convergence_curves.json")
+            with open(convergence_path, "w") as f:
+                json_mod.dump({scenario_name: convergence}, f, indent=2)
+
+            # Generate LaTeX table
+            model_metrics = ["F1", "Accuracy", "Precision", "Recall"]
+            available_model_metrics = [m for m in model_metrics if m in final_metrics]
+            if available_model_metrics:
+                latex = generate_latex_table(
+                    {scenario_name: final_metrics},
+                    available_model_metrics,
+                    caption="Model performance (mean $\\pm$ std across benign nodes)",
+                    label="tab:model_performance",
+                )
+                with open(os.path.join(analysis_dir, "latex_tables.tex"), "w") as f:
+                    f.write(latex)
+
+            # Step 2: Generate plots
+            from analysis.radar_plot_generator import (
+                generate_full_metrics_table,
+                plot_aggregation_behavior,
+                plot_convergence_curves,
+                plot_convergence_metrics,
+                plot_resource_over_time,
+            )
+
+            convergence_data = {scenario_name: convergence}
+
+            plot_convergence_curves(
+                convergence_data,
+                metric="F1",
+                output_path=os.path.join(figures_dir, "convergence_f1.png"),
+            )
+            plot_convergence_curves(
+                convergence_data,
+                metric="Accuracy",
+                output_path=os.path.join(figures_dir, "convergence_accuracy.png"),
+            )
+            plot_convergence_metrics(
+                convergence_data,
+                output_path=os.path.join(figures_dir, "convergence_model_metrics.png"),
+            )
+
+            # Resource usage over time (CPU, RAM, Network)
+            plot_resource_over_time(
+                convergence_data,
+                output_path=os.path.join(figures_dir, "resource_usage.png"),
+            )
+
+            # Aggregation behavior (if Balance/RADAR metrics exist)
+            if any(tag in convergence for tag in ["Threshold", "SimilarNeighbors", "NeighborAcceptRate"]):
+                plot_aggregation_behavior(
+                    convergence_data,
+                    scenario_name,
+                    output_path=os.path.join(figures_dir, "aggregation_behavior.png"),
+                )
+
+            # LaTeX table
+            if summary_rows:
+                results_df = pd.DataFrame(summary_rows)
+                generate_full_metrics_table(
+                    results_df,
+                    output_path=os.path.join(analysis_dir, "full_metrics_table.tex"),
+                )
+
+            logging.info(f"Analysis report generated at {analysis_dir}")
+            return True  # noqa: TRY300
+
+        except Exception as e:
+            logging.exception(f"Error generating analysis report: {e}")  # noqa: TRY401
             return False

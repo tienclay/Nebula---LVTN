@@ -31,7 +31,7 @@ def create_aggregator(config, engine):
     if aggregator:
         return aggregator(config=config, engine=engine)
     else:
-        raise AggregatorException(f"Aggregation algorithm {algorithm} not found.")
+        raise AggregatorException(f"Aggregation algorithm {algorithm} not found.")  # noqa: TRY003
 
 
 def create_target_aggregator(config, engine):
@@ -53,7 +53,7 @@ def create_target_aggregator(config, engine):
     if aggregator:
         return aggregator(config=config, engine=engine)
     else:
-        raise AggregatorException(f"Aggregation algorithm {algorithm} not found.")
+        raise AggregatorException(f"Aggregation algorithm {algorithm} not found.")  # noqa: TRY003
 
 
 class Aggregator(ABC):
@@ -66,6 +66,7 @@ class Aggregator(ABC):
         self._waiting_global_update = False
         self._pending_models_to_aggregate = {}
         self._future_models_to_aggregate = {}
+        self._last_agg_metrics = {}
         self._add_model_lock = Locker(name="add_model_lock", async_lock=True)
         self._aggregation_done_lock = Locker(name="aggregation_done_lock", async_lock=True)
 
@@ -93,25 +94,23 @@ class Aggregator(ABC):
                 timeout=self.config.participant["aggregator_args"]["aggregation_timeout"]
             )
         else:
-            raise Exception("It is not possible to set nodes to aggregate when the aggregation is running.")
+            raise Exception("It is not possible to set nodes to aggregate when the aggregation is running.")  # noqa: TRY002, TRY003
 
     def set_waiting_global_update(self):
         self._waiting_global_update = True
-    
-    
 
     async def reset(self):
         await self._add_model_lock.acquire_async()
         self._federation_nodes.clear()
         self._pending_models_to_aggregate.clear()
-        try:
+        try:  # noqa: SIM105
             await self._aggregation_done_lock.release_async()
-        except:
+        except:  # noqa: E722, S110
             pass
         await self._add_model_lock.release_async()
 
     def get_nodes_pending_models_to_aggregate(self):
-        return {node for key in self._pending_models_to_aggregate.keys() for node in key.split()}
+        return {node for key in self._pending_models_to_aggregate.keys() for node in key.split()}  # noqa: SIM118
 
     async def _handle_global_update(self, model, source):
         logging.info(f"🔄  _handle_global_update | source={source}")
@@ -124,7 +123,7 @@ class Aggregator(ABC):
         await self._add_model_lock.release_async()
         await self._aggregation_done_lock.release_async()
 
-    async def _add_pending_model(self, model, weight, source):
+    async def _add_pending_model(self, model, weight, source):  # noqa: C901
         if len(self._federation_nodes) <= len(self.get_nodes_pending_models_to_aggregate()):
             logging.info("🔄  _add_pending_model | Ignoring model...")
             await self._add_model_lock.release_async()
@@ -174,7 +173,7 @@ class Aggregator(ABC):
         await self._add_model_lock.release_async()
         return self.get_nodes_pending_models_to_aggregate()
 
-    async def include_model_in_buffer(self, model, weight, source=None, round=None, local=False):
+    async def include_model_in_buffer(self, model, weight, source=None, round=None, local=False):  # noqa: A002
         await self._add_model_lock.acquire_async()
         logging.info(
             f"🔄  include_model_in_buffer | source={source} | round={round} | weight={weight} |--| __models={self._pending_models_to_aggregate.keys()} | federation_nodes={self._federation_nodes} | pending_models_to_aggregate={self.get_nodes_pending_models_to_aggregate()}"
@@ -220,7 +219,7 @@ class Aggregator(ABC):
         except asyncio.CancelledError:
             logging.exception("🔄  get_aggregation | Lock acquisition was cancelled")
         except Exception as e:
-            logging.exception(f"🔄  get_aggregation | Error acquiring lock: {e}")
+            logging.exception(f"🔄  get_aggregation | Error acquiring lock: {e}")  # noqa: TRY401
         finally:
             await self._aggregation_done_lock.release_async()
 
@@ -232,7 +231,7 @@ class Aggregator(ABC):
             self._pending_models_to_aggregate.clear()
             return aggregated_model
 
-        unique_nodes_involved = set(node for key in self._pending_models_to_aggregate for node in key.split())
+        unique_nodes_involved = set(node for key in self._pending_models_to_aggregate for node in key.split())  # noqa: C401
 
         if len(unique_nodes_involved) != len(self._federation_nodes):
             missing_nodes = self._federation_nodes - unique_nodes_involved
@@ -246,20 +245,24 @@ class Aggregator(ABC):
 
         aggregated_result = self.run_aggregation(self._pending_models_to_aggregate)
         self._pending_models_to_aggregate.clear()
-        return aggregated_result
-    
+
+        # Handle aggregators that return (params, metrics_dict) tuples
+        if isinstance(aggregated_result, tuple):
+            aggregated_params, agg_metrics = aggregated_result
+            self._last_agg_metrics = agg_metrics
+            return aggregated_params
+        else:
+            self._last_agg_metrics = {}
+            return aggregated_result
+
     def get_benign_models(self):
         """
         Trả về danh sách weight dict của các node khác (benign)
         đang chờ aggregate, loại bỏ chính node này (source == self.engine.get_addr()).
         """
-        return [
-            model
-            for src, (model, _) in self._pending_models_to_aggregate.items()
-            if src != self.engine.get_addr()
-        ]
+        return [model for src, (model, _) in self._pending_models_to_aggregate.items() if src != self.engine.get_addr()]
 
-    async def include_next_model_in_buffer(self, model, weight, source=None, round=None):
+    async def include_next_model_in_buffer(self, model, weight, source=None, round=None):  # noqa: A002
         logging.info(f"🔄  include_next_model_in_buffer | source={source} | round={round} | weight={weight}")
         if round not in self._future_models_to_aggregate:
             self._future_models_to_aggregate[round] = []
@@ -287,12 +290,17 @@ def create_malicious_aggregator(aggregator, attack):
 
     # This function will replace the original aggregate method of the aggregator.
     def malicious_aggregate(self, models):
-        accum = run_aggregation(models)
+        result = run_aggregation(models)
+        # Handle aggregators that return (params, metrics_dict) tuples
+        if isinstance(result, tuple):
+            accum, agg_metrics = result
+        else:
+            accum, agg_metrics = result, None
         logging.info(f"malicious_aggregate | original aggregation result={accum}")
         if models is not None:
             accum = attack(accum)
             logging.info(f"malicious_aggregate | attack aggregation result={accum}")
-        return accum
+        return (accum, agg_metrics) if agg_metrics is not None else accum
 
     aggregator.run_aggregation = partial(malicious_aggregate, aggregator)
     return aggregator

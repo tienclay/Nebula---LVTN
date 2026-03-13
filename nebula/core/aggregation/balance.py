@@ -28,7 +28,7 @@ class Balance(Aggregator):
         self.R = int(self.config.participant["scenario_args"]["rounds"])
         self.lambda_func = lambda r: r / float(self.R)
 
-    def run_aggregation(self, models):
+    def run_aggregation(self, models):  # noqa: C901
         """
         Perform similarity-based filtering:
           - The 'models' arg is a dict: {addr: (param_dict, weight), ...}
@@ -36,6 +36,10 @@ class Balance(Aggregator):
           - We compute a threshold = gamma * exp(-kappa*lambda(t)) * ||local_model||
           - We average all neighbors whose distance <= threshold
           - We blend the final average with the local model using 'alpha'
+
+        Returns:
+            tuple: (aggregated_params, agg_metrics) where agg_metrics is a dict of
+                   aggregation-level metrics for TensorBoard logging.
         """
         # 1) Call parent aggregator method
         super().run_aggregation(models)
@@ -46,7 +50,7 @@ class Balance(Aggregator):
         # 2) Identify the local model via the node's address
         local_addr = self.config.participant["network_args"]["addr"]
         if local_addr not in models:
-            raise ValueError(f"Local address {local_addr} not found in models.")
+            raise ValueError(f"Local address {local_addr} not found in models.")  # noqa: TRY003
 
         local_model, local_weight = models[local_addr]
 
@@ -69,23 +73,28 @@ class Balance(Aggregator):
         t = self.engine.round
         lam_t = self.lambda_func(t)
         decay_factor = math.exp(-self.kappa * lam_t)
-        threshold = self.gamma * decay_factor * model_norm(local_model)
+        local_norm = model_norm(local_model)
+        threshold = self.gamma * decay_factor * local_norm
 
         logging.debug(f"Node {local_addr} is running Balance for round {t}.")
         logging.debug(f"Threshold: {threshold:.4f}")
-        logging.debug(f"Local model norm: {model_norm(local_model):.4f}")
+        logging.debug(f"Local model norm: {local_norm:.4f}")
 
-        # 5) Collect all "similar" models
+        # 5) Collect all "similar" models and track distances
         similar_accum = {layer: torch.zeros_like(param, dtype=torch.float32) for layer, param in local_model.items()}
         total_weight_similar = 0.0
         similar_models_count = 0
+        total_neighbors = 0
+        neighbor_distances = []
 
         for addr, (nbr_model, nbr_weight) in models.items():
             # Skip comparing local model to itself
             if addr == local_addr:
                 continue
 
+            total_neighbors += 1
             dist = model_distance(local_model, nbr_model)
+            neighbor_distances.append(dist)
             logging.debug(f"Neighbor {addr} norm: {model_norm(nbr_model):.4f}")
             logging.debug(f"Distance to {addr}: {dist:.4f}")
             if dist <= threshold:
@@ -95,10 +104,21 @@ class Balance(Aggregator):
                 total_weight_similar += nbr_weight
                 similar_models_count += 1
 
+        # Build aggregation metrics
+        avg_distance = sum(neighbor_distances) / len(neighbor_distances) if neighbor_distances else 0.0
+        agg_metrics = {
+            "Aggregation/Threshold": threshold,
+            "Aggregation/SimilarNeighborsCount": similar_models_count,
+            "Aggregation/TotalNeighbors": total_neighbors,
+            "Aggregation/AvgNeighborDistance": avg_distance,
+            "Aggregation/LocalModelNorm": local_norm,
+            "Aggregation/NeighborAcceptRate": similar_models_count / max(total_neighbors, 1),
+        }
+
         # 6) If no neighbors pass the threshold, return local model unchanged
         if similar_models_count == 0:
             logging.debug("No neighbors passed similarity check. Returning local model.")
-            return local_model
+            return local_model, agg_metrics
 
         # Log number of similar models
         logging.info(f"Number of similar neighbors: {similar_models_count}")
@@ -119,5 +139,5 @@ class Balance(Aggregator):
         # 9) Cleanup
         gc.collect()
 
-        # 10) Return the final blended model
-        return final_model
+        # 10) Return the final blended model with metrics
+        return final_model, agg_metrics

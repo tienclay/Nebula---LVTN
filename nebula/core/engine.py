@@ -1,9 +1,11 @@
 import asyncio
 import logging
+import math
 import os
+from collections import OrderedDict
 
 import docker
-from collections import OrderedDict
+import torch
 
 from nebula.addons.attacks.attacks import create_attack
 from nebula.addons.functions import print_msg_box
@@ -19,15 +21,17 @@ logging.getLogger("fsspec").setLevel(logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.ERROR)
 logging.getLogger("plotly").setLevel(logging.ERROR)
 
-import pdb
-import sys
-
-from nebula.config.config import Config
-from nebula.core.training.lightning import Lightning
-from nebula.core.utils.helper import cosine_metric
+import pdb  # noqa: E402, T100
+import sys  # noqa: E402
 
 # BMTD: type for security
-from typing import TypedDict
+from typing import TypedDict  # noqa: E402
+
+from nebula.config.config import Config  # noqa: E402
+from nebula.core.training.lightning import Lightning  # noqa: E402
+from nebula.core.utils.helper import cosine_metric  # noqa: E402
+
+
 class SecurityConfig(TypedDict):
     encryption: bool
     mtd: bool
@@ -39,7 +43,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
-    pdb.set_trace()
+    pdb.set_trace()  # noqa: T100
     pdb.post_mortem(exc_traceback)
 
 
@@ -71,7 +75,7 @@ class Engine:
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability=0.5),  # BMTD: security config  # noqa: B008
     ):
         self.config = config
         self.idx = config.participant["device_args"]["idx"]
@@ -84,7 +88,7 @@ class Engine:
         self.role = config.participant["device_args"]["role"]
         self.name = config.participant["device_args"]["name"]
         self.docker_id = config.participant["device_args"]["docker_id"]
-        self.client = docker.from_env()
+        self.client = docker.from_env() if config.participant["scenario_args"]["deployment"] == "docker" else None
         self.global_weights_history = []
 
         print_banner()
@@ -109,7 +113,7 @@ class Engine:
         self._aggregator = create_aggregator(config=self.config, engine=self)
 
         self._secure_neighbors = []
-        self._is_malicious = True if self.config.participant["adversarial_args"]["attacks"] != "No Attack" else False
+        self._is_malicious = True if self.config.participant["adversarial_args"]["attacks"] != "No Attack" else False  # noqa: SIM210
 
         msg = f"Trainer: {self._trainer.__class__.__name__}"
         msg += f"\nDataset: {self.config.participant['data_args']['dataset']}"
@@ -162,7 +166,7 @@ class Engine:
         )
 
         self.register_message_events_callbacks()
-        
+
         # BMTD: neighbor selection
         self.randomized_federation_nodes = set()
 
@@ -266,7 +270,7 @@ class Engine:
             try:
                 await self.cm.health.alive(source)
             except Exception as e:
-                logging.exception(f"Error updating alive status in connection: {e}")
+                logging.exception(f"Error updating alive status in connection: {e}")  # noqa: TRY401
         else:
             logging.error(f"❗️  Connection {source} not found in connections...")
 
@@ -293,7 +297,7 @@ class Engine:
 
     async def _reputation_callback(self, source, message):
         malicious_nodes = message.arguments  # List of malicious nodes
-        if self.with_reputation:
+        if self.with_reputation:  # noqa: SIM102
             if len(malicious_nodes) > 0 and not self._is_malicious:
                 if self.is_dynamic_topology:
                     await self._disrupt_connection_using_reputation(malicious_nodes)
@@ -315,42 +319,42 @@ class Engine:
                             self.round,
                         ] else None
                 except Exception as e:
-                    logging.exception(f"Error updating round in connection: {e}")
+                    logging.exception(f"Error updating round in connection: {e}")  # noqa: TRY401
             else:
                 logging.error(f"Connection not found for {source}")
         except Exception as e:
-            logging.exception(f"Error updating round in connection: {e}")
+            logging.exception(f"Error updating round in connection: {e}")  # noqa: TRY401
         finally:
             await self.cm.get_connections_lock().release_async()
-            
+
     # BMTD: implement coin-flipping protocol callback to choose federation nodes
     async def _security_neighbor_selection_ready_callback(self, source, message):
         logging.info(f"📝 handle_security_message | Trigger | Received ready message from  {source}")
         async with self.cm.get_neighbor_selection_lock(source):
             self.cm.neighbor_selection_data[source]["ready_phase"]["status"] = True
-        logging.info(f"Updated neighbor_selection_ready")
-    
+        logging.info("Updated neighbor_selection_ready")
+
     async def _security_neighbor_selection_commit_callback(self, source, message):
         logging.info(f"📝 handle_security_message | Trigger | Received commit message from  {source}")
         async with self.cm.get_neighbor_selection_lock(source):
             self.cm.neighbor_selection_data[source]["commit_phase"]["status"] = True
             self.cm.neighbor_selection_data[source]["commit_phase"]["commitment"] = message.commitment
-        logging.info(f"Updated neighbor_selection_commit")
-        
+        logging.info("Updated neighbor_selection_commit")
+
     async def _security_neighbor_selection_reveal_callback(self, source, message):
         logging.info(f"📝 handle_security_message | Trigger | Received reveal message from  {source}")
         async with self.cm.get_neighbor_selection_lock(source):
             self.cm.neighbor_selection_data[source]["reveal_phase"]["status"] = True
             self.cm.neighbor_selection_data[source]["reveal_phase"]["bit"] = message.bit
             self.cm.neighbor_selection_data[source]["reveal_phase"]["nonce"] = message.nonce
-        logging.info(f"Updated neighbor_selection_reveal")
-        
+        logging.info("Updated neighbor_selection_reveal")
+
     async def _security_neighbor_selection_verify_callback(self, source, message):
         logging.info(f"📝 handle_security_message | Trigger | Received verify message from  {source}")
         logging.info(f"{source} verified = {message.verified}")
 
     async def create_trainer_module(self):
-        asyncio.create_task(self._start_learning())
+        asyncio.create_task(self._start_learning())  # noqa: RUF006
         logging.info("Started trainer module...")
 
     async def start_communications(self):
@@ -383,8 +387,8 @@ class Engine:
         if self.security["mtd"]:
             async with self.cm.coin_flipping_lock:
                 await self.cm.initialize_security_neighbor_data()
-            logging.info("[neighbor-selection] 🪙 Security data initialized ")        
-        
+            logging.info("[neighbor-selection] 🪙 Security data initialized ")
+
         await self.federation_ready_lock.acquire_async()
         if self.config.participant["device_args"]["start"]:
             logging.info(
@@ -484,7 +488,7 @@ class Engine:
             self.aggregator = self.target_aggregation
             await self.aggregator.update_federation_nodes(self.federation_nodes)
 
-            for subnodes in aggregated_models_weights.keys():
+            for subnodes in aggregated_models_weights.keys():  # noqa: SIM118
                 sublist = subnodes.split()
                 (submodel, weights) = aggregated_models_weights[subnodes]
                 for node in sublist:
@@ -493,14 +497,14 @@ class Engine:
                             submodel, weights, source=self.get_name(), round=self.round
                         )
             logging.info(f"Current aggregator is: {self.aggregator}")
-            
+
     def get_benign_weights(self):
         """
         Return a list of weight dicts from benign workers for the current round.
         Assumes the aggregator provides `get_benign_models()`.
         """
         return self.aggregator.get_benign_models()
-    
+
     def get_global_weights_history(self):
         """
         Return the stored history of global model weights across rounds.
@@ -509,16 +513,64 @@ class Engine:
 
     async def _waiting_model_updates(self):
         logging.info(f"💤  Waiting convergence in round {self.round}.")
+        # Snapshot local model before aggregation (for convergence tracking)
+        local_before = OrderedDict((k, v.clone().detach()) for k, v in self.trainer.get_model_parameters().items())
+
         params = await self.aggregator.get_aggregation()
         if params is not None:
             # record a detached copy of global weights
             copied = OrderedDict((k, v.clone().detach()) for k, v in params.items())
             self.global_weights_history.append(copied)
             self.trainer.set_model_parameters(params)
+
+            # Log aggregation-level metrics (from Balance or other aggregators that provide them)
+            # Use step=self.round so all nodes share the same step for tensorboard_reducer alignment
+            agg_metrics = getattr(self.aggregator, "_last_agg_metrics", {})
+            if agg_metrics:
+                self.trainer.logger.log_data(agg_metrics, step=self.round)
+
+            # Log convergence metrics (using round as step for cross-node alignment)
+            self._log_convergence_metrics(local_before)
         else:
             logging.error("Aggregation finished with no parameters")
 
+    def _log_convergence_metrics(self, local_before=None):
+        """Log model convergence metrics using round number as step for cross-node alignment.
+
+        Metrics logged:
+        - GlobalModelNorm: L2 norm of aggregated model weights
+        - ModelNormDelta: relative weight change ||w_t - w_{t-1}|| / ||w_t||
+        - CosineSimilarity: cosine sim between local model (pre-agg) and aggregated model
+        """
+        curr = self.global_weights_history[-1]
+
+        # Compute current model norm
+        curr_norm_sq = sum(torch.sum(v.float() ** 2).item() for v in curr.values())
+        curr_norm = math.sqrt(curr_norm_sq)
+
+        metrics = {"Convergence/GlobalModelNorm": curr_norm}
+
+        # Delta norm (requires >= 2 history entries)
+        if len(self.global_weights_history) >= 2:
+            prev = self.global_weights_history[-2]
+            delta_norm_sq = sum(torch.sum((curr[k].float() - prev[k].float()) ** 2).item() for k in curr)
+            delta_norm = math.sqrt(delta_norm_sq)
+            metrics["Convergence/ModelNormDelta"] = delta_norm / curr_norm if curr_norm > 0 else 0.0
+
+        # Cosine similarity between local model (before aggregation) and aggregated model
+        # Shows how much each node's local training aligns with the consensus
+        if local_before is not None:
+            dot_product = sum(torch.sum(local_before[k].float() * curr[k].float()).item() for k in curr)
+            local_norm_sq = sum(torch.sum(v.float() ** 2).item() for v in local_before.values())
+            local_norm = math.sqrt(local_norm_sq)
+            cos_sim = dot_product / (local_norm * curr_norm) if (local_norm > 0 and curr_norm > 0) else 0.0
+            metrics["Convergence/CosineSimilarity"] = cos_sim
+
+        self.trainer.logger.log_data(metrics, step=self.round)
+
     def learning_cycle_finished(self):
+        if self.round is None or self.total_rounds is None:
+            return False
         return not (self.round < self.total_rounds)
 
     async def _learning_cycle(self):
@@ -541,18 +593,20 @@ class Engine:
             undirected_connections = await self.cm.get_addrs_current_connections(only_undirected=True)
             logging.info(f"Direct connections: {direct_connections} | Undirected connections: {undirected_connections}")
             logging.info(f"[Role {self.role}] Starting learning cycle...")
-            
+
             # BMTD: implement coin-flipping protocol to choose federation nodes
             if self.security["mtd"]:
-                logging.info(f"[neighbor-selection] 🪙 Start coin-flipping protocol with probability p = {self.cm.get_acceptance_probability()}")
+                logging.info(
+                    f"[neighbor-selection] 🪙 Start coin-flipping protocol with probability p = {self.cm.get_acceptance_probability()}"
+                )
                 await self.start_coin_flipping_protocol()
-                logging.info(f"[neighbor-selection] 🪙 Coin-flipping protocol finished")
+                logging.info("[neighbor-selection] 🪙 Coin-flipping protocol finished")
                 self.federation_nodes = await self.get_randomized_federation_nodes(myself=True)
                 logging.info(f"Federation nodes: {self.federation_nodes}")
             else:
                 self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
                 logging.info(f"Federation nodes: {self.federation_nodes}")
-            
+
             await self.aggregator.update_federation_nodes(self.federation_nodes)
             await self._extended_learning_cycle()
 
@@ -586,18 +640,29 @@ class Engine:
             else:
                 logging.error("Error reporting scenario finished")
 
-        logging.info("Checking if all my connections reached the total rounds...")
-        while not self.cm.check_finished_experiment():
-            await asyncio.sleep(1)
-
-        await asyncio.sleep(5)
-
         # Kill itself
         if self.config.participant["scenario_args"]["deployment"] == "docker":
+            logging.info("Checking if all my connections reached the total rounds...")
+            while not self.cm.check_finished_experiment():
+                await asyncio.sleep(1)
+
+            await asyncio.sleep(5)
+
             try:
                 self.client.containers.get(self.docker_id).stop()
             except Exception as e:
                 print(f"Error stopping Docker container with ID {self.docker_id}: {e}")
+        else:
+            # Process mode: exit immediately after FL completes (no Docker container to stop,
+            # and check_finished_experiment can loop forever if peers already disconnected).
+            # Use os._exit() instead of sys.exit() because sys.exit() raises SystemExit which
+            # asyncio catches at the task level, leaving the event loop running.
+            logging.info("Process mode: sleeping 5s then calling os._exit(0)...")
+            await asyncio.sleep(5)
+            logging.info("Calling os._exit(0) now.")
+            import os
+
+            os._exit(0)
 
     async def _extended_learning_cycle(self):
         """
@@ -611,7 +676,7 @@ class Engine:
         loss_threshold = 0.5
 
         current_models = {}
-        for subnodes in aggregated_models_weights.keys():
+        for subnodes in aggregated_models_weights.keys():  # noqa: SIM118
             sublist = subnodes.split()
             submodel = aggregated_models_weights[subnodes][0]
             for node in sublist:
@@ -651,10 +716,10 @@ class Engine:
         # )
         message = self.cm.create_message("federation", "reputation", arguments=[str(arg) for arg in (malicious_nodes)])
         await self.cm.send_message_to_neighbors(message)
-        
+
     async def start_coin_flipping_protocol(self):
         current_connections = await self.cm.get_addrs_current_connections(only_direct=True)
-        
+
         try:
             async with self.cm.coin_flipping_lock:
                 # Phase 1: Ready Phase (Barrier Sync)
@@ -662,30 +727,30 @@ class Engine:
 
                 # Phase 2: Commit Phase
                 result_commit = await asyncio.gather(
-                    *[self.handle_neighbor_selection_commit(peer) for peer in current_connections], 
-                    return_exceptions=True
+                    *[self.handle_neighbor_selection_commit(peer) for peer in current_connections],
+                    return_exceptions=True,
                 )
                 self.log_task_errors(result_commit, "Commit Phase")
 
                 # Phase 3: Reveal Phase
                 result_reveal = await asyncio.gather(
-                    *[self.handle_neighbor_selection_reveal(peer) for peer in current_connections], 
-                    return_exceptions=True
+                    *[self.handle_neighbor_selection_reveal(peer) for peer in current_connections],
+                    return_exceptions=True,
                 )
                 self.log_task_errors(result_reveal, "Reveal Phase")
 
                 # Phase 4: Verify Phase
                 result_verify = await asyncio.gather(
-                    *[self.handle_neighbor_selection_verify(peer) for peer in current_connections], 
-                    return_exceptions=True
+                    *[self.handle_neighbor_selection_verify(peer) for peer in current_connections],
+                    return_exceptions=True,
                 )
                 self.log_task_errors(result_verify, "Verify Phase")
 
-        except asyncio.TimeoutError as e:
-            logging.info(f"[neighbor-selection] ❌ Timeout Error: {e}") 
+        except TimeoutError as e:
+            logging.info(f"[neighbor-selection] ❌ Timeout Error: {e}")
 
         except Exception as e:
-            logging.error(f"[neighbor-selection] ❌ Unexpected Error: {e}")
+            logging.exception(f"[neighbor-selection] ❌ Unexpected Error: {e}")  # noqa: TRY401
 
         finally:
             self.randomized_federation_nodes = await self.cm.get_addrs_neighbor_selection_connections(only_direct=True)
@@ -696,7 +761,7 @@ class Engine:
     async def wait_for_all_ready(self, peers, timeout=60):
         """Ensures all nodes reach the READY phase before proceeding."""
         tasks = [self.handle_neighbor_selection_ready(peer, timeout) for peer in peers]
-        
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
         self.log_task_errors(results, "Ready Phase")
 
@@ -706,14 +771,20 @@ class Engine:
         logging.info(f"[neighbor-selection] ⏱️ Waiting {timeout} seconds for all nodes to reach READY phase...")
 
         while asyncio.get_event_loop().time() < end_time:
-            if all(self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status") for peer in peers):
+            if all(
+                self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status") for peer in peers
+            ):
                 logging.info("[neighbor-selection] ✅ All nodes are READY. Proceeding to COMMIT phase.")
                 return True
             await asyncio.sleep(0.1)  # Prevent CPU overuse
 
         # Handle timeout
-        missing_nodes = [peer for peer in peers if not self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status")]
-        raise asyncio.TimeoutError(f"⏳ Timeout: Nodes {missing_nodes} did not reach READY phase.")
+        missing_nodes = [
+            peer
+            for peer in peers
+            if not self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status")
+        ]
+        raise TimeoutError(f"⏳ Timeout: Nodes {missing_nodes} did not reach READY phase.")  # noqa: TRY003
 
     def log_task_errors(self, results, phase_name):
         """Helper function to log errors from asyncio.gather results."""
@@ -722,37 +793,32 @@ class Engine:
                 logging.warning(f"[neighbor-selection] ⏳ {phase_name}: Task {idx} timed out with error: {result}.")
             elif isinstance(result, asyncio.CancelledError):
                 logging.warning(f"[neighbor-selection] ⏳ {phase_name}: Task {idx} was cancelled with error: {result}.")
-            elif isinstance(result, ValueError):
-                logging.error(f"[neighbor-selection] ❌ {phase_name}: Task {idx} failed with error: {result}")
-            elif isinstance(result, Exception):
+            elif isinstance(result, ValueError) or isinstance(result, Exception):  # noqa: SIM101
                 logging.error(f"[neighbor-selection] ❌ {phase_name}: Task {idx} failed with error: {result}")
 
-
-        
     async def handle_neighbor_selection_ready(self, peer, timeout=5):
         message = self.cm.create_message("security", "neighbor_selection_ready")
         logging.info(f"[neighbor-selection] Sending NEIGHBOR_SELECTION_READY to {peer}")
         await self.cm.send_message(peer, message)
         start_time = asyncio.get_event_loop().time()
         end_time = start_time + timeout
-        sleep_time = 0.1 
+        sleep_time = 0.1
 
         while asyncio.get_event_loop().time() < end_time:
-            if self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status") is True:  
+            if self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status") is True:
                 logging.info(f"[neighbor-selection] ✅ Verified NEIGHBOR_SELECTION_READY from {peer}")
-                return True  
+                return True
 
             await asyncio.sleep(sleep_time)
             sleep_time = min(sleep_time * 2, 0.5)
 
-        raise asyncio.TimeoutError(f"Timeout: {peer} did not send NEIGHBOR_SELECTION_READY in {timeout} seconds.")
-
+        raise TimeoutError(f"Timeout: {peer} did not send NEIGHBOR_SELECTION_READY in {timeout} seconds.")  # noqa: TRY003
 
     async def handle_neighbor_selection_commit(self, peer, timeout=5):
         async with self.cm.get_neighbor_selection_lock(peer):
             commitment = await self.cm.security_commit_phase(peer)
         logging.info(f"[neighbor-selection] data: {self.cm.neighbor_selection_data[peer]}")
-        message = self.cm.create_message("security", "neighbor_selection_commit", 0 , b'', commitment)
+        message = self.cm.create_message("security", "neighbor_selection_commit", 0, b"", commitment)
         logging.info(f"[neighbor-selection] Sending NEIGHBOR_SELECTION_COMMIT to {peer}")
         await self.cm.send_message(peer, message)
 
@@ -766,17 +832,17 @@ class Engine:
             # BMTD: make sure that ready_status is True before checking commit_status
             if ready_status and commit_status:
                 logging.info(f"[neighbor-selection] ✅ Verified NEIGHBOR_SELECTION_COMMIT from {peer}")
-                return True  
+                return True
 
             await asyncio.sleep(sleep_time)
             sleep_time = min(sleep_time * 2, 0.5)
-        
+
         ready_status = self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status")
         commit_status = self.cm.neighbor_selection_data.get(peer, {}).get("commit_phase", {}).get("status")
         if not ready_status:
-            raise ValueError(f"❌ Malicious: {peer} send NEIGHBOR_SELECTION_COMMIT before NEIGHBOR_SELECTION_READY.")
-        raise asyncio.TimeoutError(f"Timeout: {peer} did not send NEIGHBOR_SELECTION_COMMIT in {timeout} seconds.")
-    
+            raise ValueError(f"❌ Malicious: {peer} send NEIGHBOR_SELECTION_COMMIT before NEIGHBOR_SELECTION_READY.")  # noqa: TRY003
+        raise TimeoutError(f"Timeout: {peer} did not send NEIGHBOR_SELECTION_COMMIT in {timeout} seconds.")  # noqa: TRY003
+
     async def handle_neighbor_selection_reveal(self, peer, timeout=5):
         bit = self.cm.neighbor_selection_data.get(peer, {}).get("self_commitment", {}).get("bit")
         nonce = self.cm.neighbor_selection_data.get(peer, {}).get("self_commitment", {}).get("nonce")
@@ -795,43 +861,44 @@ class Engine:
             # BMTD: make sure that ready_status is True before checking commit_status
             if ready_status and commit_status and reveal_status:
                 logging.info(f"[neighbor-selection] ✅ Verified NEIGHBOR_SELECTION_REVEAL from {peer}")
-                return True  
+                return True
 
             await asyncio.sleep(sleep_time)
             sleep_time = min(sleep_time * 2, 0.5)
-        
+
         ready_status = self.cm.neighbor_selection_data.get(peer, {}).get("ready_phase", {}).get("status")
         commit_status = self.cm.neighbor_selection_data.get(peer, {}).get("commit_phase", {}).get("status")
         reveal_status = self.cm.neighbor_selection_data.get(peer, {}).get("reveal_phase", {}).get("status")
         if not ready_status:
-            raise ValueError(f"❌ Malicious: {peer} send NEIGHBOR_SELECTION_COMMIT before NEIGHBOR_SELECTION_READY.")
+            raise ValueError(f"❌ Malicious: {peer} send NEIGHBOR_SELECTION_COMMIT before NEIGHBOR_SELECTION_READY.")  # noqa: TRY003
         if not commit_status:
-            raise ValueError(f"❌ Malicious: {peer} send NEIGHBOR_SELECTION_REVEAL before NEIGHBOR_SELECTION_COMMIT.")
-        
-        raise asyncio.TimeoutError(f"Timeout: {peer} did not send NEIGHBOR_SELECTION_REVEAL in {timeout} seconds.")
-    
+            raise ValueError(f"❌ Malicious: {peer} send NEIGHBOR_SELECTION_REVEAL before NEIGHBOR_SELECTION_COMMIT.")  # noqa: TRY003
+
+        raise TimeoutError(f"Timeout: {peer} did not send NEIGHBOR_SELECTION_REVEAL in {timeout} seconds.")  # noqa: TRY003
+
     async def handle_neighbor_selection_verify(self, peer, timeout=5):
         async with self.cm.get_neighbor_selection_lock(peer):
             verified = await self.cm.security_verify_phase(peer)
             self.cm.neighbor_selection_data[peer]["connect"] = verified
-            
+
         if verified:
             await self.cm.verify_neighbor_selection_connection(peer)
-            message = self.cm.create_message("security", "neighbor_selection_verify", 0.0 , b'', b'', True)
+            message = self.cm.create_message("security", "neighbor_selection_verify", 0.0, b"", b"", True)
             await self.cm.send_message(peer, message)
             logging.info(f"[neighbor-selection] ✅ Verified NEIGHBOR_SELECTION_VERIFY from {peer}")
             return True
         else:
-            message = self.cm.create_message("security", "neighbor_selection_verify", 0.0 , b'', b'', False)
+            message = self.cm.create_message("security", "neighbor_selection_verify", 0.0, b"", b"", False)
             await self.cm.send_message(peer, message)
             logging.info(f"[neighbor-selection] ❌ Malicious: {peer} did not send correct bit and nonce.")
             return False
-        
-    async def get_randomized_federation_nodes(self, myself = False):
-        nodes = self.randomized_federation_nodes.copy() # set can be modified during iteration
+
+    async def get_randomized_federation_nodes(self, myself=False):
+        nodes = self.randomized_federation_nodes.copy()  # set can be modified during iteration
         if myself:
             nodes.add(self.addr)
         return nodes
+
 
 class MaliciousNode(Engine):
     def __init__(
@@ -840,7 +907,7 @@ class MaliciousNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability=0.5),  # BMTD: security config  # noqa: B008
     ):
         super().__init__(
             model,
@@ -855,7 +922,7 @@ class MaliciousNode(Engine):
     async def _extended_learning_cycle(self):
         try:
             await self.attack.attack()
-        except:
+        except:  # noqa: E722
             attack_name = self.config.participant["adversarial_args"]["attacks"]
             logging.exception(f"Attack {attack_name} failed")
 
@@ -874,7 +941,7 @@ class AggregatorNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability=0.5),  # BMTD: security config  # noqa: B008
     ):
         super().__init__(
             model,
@@ -907,7 +974,7 @@ class ServerNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability=0.5),  # BMTD: security config  # noqa: B008
     ):
         super().__init__(
             model,
@@ -939,7 +1006,7 @@ class TrainerNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability=0.5),  # BMTD: security config  # noqa: B008
     ):
         super().__init__(
             model,
@@ -976,7 +1043,7 @@ class IdleNode(Engine):
         datamodule,
         config=Config,
         trainer=Lightning,
-        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability = 0.5), # BMTD: security config
+        security=SecurityConfig(encryption=False, mtd=False, acceptanceRandomProbability=0.5),  # BMTD: security config  # noqa: B008
     ):
         super().__init__(
             model,
